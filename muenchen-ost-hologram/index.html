@@ -73,13 +73,15 @@
   #stsidebar button:hover{background:rgba(34,211,238,.2);}
   /* Mobile Bottom-Bar fuer Stationen (nur <768px) */
   #stbar{display:none;}
-  #btn-weather-float{position:fixed;right:20px;bottom:140px;z-index:26;height:52px;
-    border-radius:26px;border:1px solid #2dd4ee;background:rgba(14,42,66,.95);
-    box-shadow:0 0 12px rgba(45,212,238,.5);font-size:13px;cursor:pointer;
-    display:flex;align-items:center;gap:8px;padding:0 16px;color:#c9f6ff;
+  #btn-weather-float{position:fixed;left:20px;bottom:140px;z-index:26;
+    border-radius:16px;border:1px solid #2dd4ee;background:rgba(14,42,66,.95);
+    box-shadow:0 0 12px rgba(45,212,238,.5);cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 16px;color:#c9f6ff;
     font-family:inherit;font-weight:bold;letter-spacing:1px;}
   #btn-weather-float.off{opacity:.7;box-shadow:none;}
-  #wx-ico{font-size:22px;} #wx-temp{color:#7df9ff;}
+  #wx-top{display:flex;align-items:center;gap:8px;font-size:18px;}
+  #wx-ico{font-size:24px;} #wx-temp{color:#7df9ff;font-size:20px;}
+  #wx-txt{font-size:11px;color:#9beaff;}
   #menu-info{display:none;font-size:10px;color:#5b8fa3;letter-spacing:1px;
     margin-top:10px;padding-top:10px;border-top:1px solid #164e63;line-height:1.7;}
   @media (max-width:768px){
@@ -165,7 +167,7 @@
   <div id="stlist-s"></div>
 </div>
 <div id="stbar"></div>
-<button id="btn-weather-float" class="off" title="Wetter AN/AUS"><span id="wx-ico">&#127783;</span><span id="wx-txt">WETTER: AUS</span><span id="wx-temp"></span></button>
+<button id="btn-weather-float" class="off" title="Wetter AN/AUS"><span id="wx-top"><span id="wx-temp"></span><span id="wx-ico">&#127783;</span></span><span id="wx-txt">WETTER: AUS</span></button>
 <div class="hud" id="menu">
   <div class="m-title">STEUERUNG</div>
   <button id="btn-traffic">&#128663; VERKEHR: AN</button>
