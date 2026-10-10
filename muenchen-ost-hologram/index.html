@@ -664,6 +664,31 @@ if(false){
   surfaceGroup.add(new THREE.LineSegments(rg, new THREE.LineBasicMaterial({vertexColors:true, transparent:true, opacity:0.8, fog:false})));
 }
 
+
+// ---------- Halbkugel unter der Karte ----------
+{
+  const hx=686, hz=-213, hr=2750;
+  const hemiGeo=new THREE.SphereGeometry(hr, 48, 24, 0, Math.PI*2, Math.PI/2, Math.PI/2);
+  const hemiMat=new THREE.MeshBasicMaterial({
+    color:0x1a6fd9, transparent:true, opacity:0.85, fog:false,
+    side:THREE.DoubleSide
+  });
+  const hemi=new THREE.Mesh(hemiGeo, hemiMat);
+  hemi.position.set(hx, 0, hz);
+  surfaceGroup.add(hemi);
+  // Kante der Halbkugel (Übergang zur Karte)
+  const edgePts=[];
+  for(let a=0;a<=64;a++){
+    const ang=(a/64)*Math.PI*2;
+    edgePts.push([hx+Math.cos(ang)*hr, hz+Math.sin(ang)*hr]);
+  }
+  const edge=polyOutline(edgePts, 2, 0x46f6ff);
+  const eg=new THREE.BufferGeometry();
+  eg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(edge.pos),3));
+  eg.setAttribute('color', new THREE.BufferAttribute(new Float32Array(edge.col),3));
+  surfaceGroup.add(new THREE.LineSegments(eg, new THREE.LineBasicMaterial({vertexColors:true, transparent:true, opacity:0.9, fog:false})));
+}
+
 await __pb(55,'STRASSEN WERDEN GELEGT');
 // ---------- Strassen: echte Geometrien, Klassen-Farben + Namen ----------
 // Gleise: vollstaendige Geometrien
@@ -2278,5 +2303,5 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{
 setTimeout(function(){ try{ __createBadgesDeferred(); }catch(e){ console.warn('Badge-Init:', e); } }, 3000);
 })();
 </script>
-<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v8.14</div></body>
+<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v8.15</div></body>
 </html>
