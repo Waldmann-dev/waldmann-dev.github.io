@@ -648,6 +648,22 @@ if(false){
   surfaceGroup.add(new THREE.LineSegments(cg, new THREE.LineBasicMaterial({vertexColors:true, transparent:true, opacity:0.9, fog:false})));
 }
 
+
+// ---------- 3km Radius-Kreis um Hechtseestr. 72 ----------
+{
+  const cx=686, cz=-213, r=3000;
+  const pts=[];
+  for(let a=0;a<=64;a++){
+    const ang=(a/64)*Math.PI*2;
+    pts.push([cx+Math.cos(ang)*r, cz+Math.sin(ang)*r]);
+  }
+  const ring=polyOutline(pts, 5, 0xff2fd6);
+  const rg=new THREE.BufferGeometry();
+  rg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(ring.pos),3));
+  rg.setAttribute('color', new THREE.BufferAttribute(new Float32Array(ring.col),3));
+  surfaceGroup.add(new THREE.LineSegments(rg, new THREE.LineBasicMaterial({vertexColors:true, transparent:true, opacity:0.8, fog:false})));
+}
+
 await __pb(55,'STRASSEN WERDEN GELEGT');
 // ---------- Strassen: echte Geometrien, Klassen-Farben + Namen ----------
 // Gleise: vollstaendige Geometrien
@@ -2262,5 +2278,5 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{
 setTimeout(function(){ try{ __createBadgesDeferred(); }catch(e){ console.warn('Badge-Init:', e); } }, 3000);
 })();
 </script>
-<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v8.11</div></body>
+<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v8.12</div></body>
 </html>
