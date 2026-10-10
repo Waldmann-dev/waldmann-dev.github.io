@@ -81,8 +81,8 @@
       overflow-x:auto;-webkit-overflow-scrolling:touch;
       padding:10px;gap:8px;background:rgba(4,12,20,.9);
       border-top:1px solid #164e63;scroll-snap-type:x mandatory;pointer-events:auto;}
-    #stbar button{flex:0 0 auto;min-height:44px;padding:10px 18px;font-size:14px;
-      border-radius:22px;border:1px solid #164e63;background:rgba(10,25,40,.95);
+    #stbar button{flex:0 0 auto;min-height:38px;padding:7px 13px;font-size:12px;
+      border-radius:19px;border:1px solid #164e63;background:rgba(10,25,40,.95);
       scroll-snap-align:start;cursor:pointer;font-family:inherit;letter-spacing:1px;
       color:#9beaff;}
     #stbar button.s{color:#ffd21f;}
@@ -953,7 +953,8 @@ function buildCars(){
     for(let k=0;k<n;k++){
       const mesh=(i+k)%4, slot=slots[mesh]++;
       if(slot>=40) break;
-      cars.push({r,s:Math.random()*r.len,baseV:8+Math.random()*7,f,dir:(i+k)%2?1:-1,
+      const bv=8+Math.random()*7;
+      cars.push({r,s:Math.random()*r.len,baseV:bv,v:liveOn?bv*Math.max(0.25,f):bv,f,dir:(i+k)%2?1:-1,
         off:((i+k)%2?2.4:-2.4),mesh,slot});
     }
   });
@@ -1328,8 +1329,87 @@ let __follow=null;
 const __followBar=document.createElement('div'); __followBar.id='follow-bar';
 __followBar.innerHTML='<button id="btn-unfollow">FOLGEN BEENDEN</button>';
 document.body.appendChild(__followBar);
-document.getElementById('btn-unfollow').onclick=()=>{ __follow=null; __followBar.classList.remove('open'); };
+document.getElementById('btn-unfollow').onclick=()=>{ __follow=null; if(__followBeam){scene.remove(__followBeam);__followBeam=null;} if(__followTrain){scene.remove(__followTrain);__followTrain=null;} __followBar.classList.remove('open'); };
+// U-Bahn-Linien: Stationsreihenfolge West->Ost (fuer echte Positionsberechnung)
+const U_SEQ={
+  'U2':['Karl-Preis-Platz','Innsbrucker Ring','Josephsburg'],
+  'U5':['Ostbahnhof','Innsbrucker Ring','Michaelibad']
+};
+function __uLineFor(label){
+  // Finde die Tunnelgeometrie zur Linie (U2/U5) via Stationsnaehe
+  const names=U_SEQ[label]; if(!names) return null;
+  let best=null,bd=1e18;
+  (DATA.subway_lines||[]).forEach(line=>{
+    let dmin=1e18;
+    names.forEach(nm=>{
+      const s=(DATA.subway_stations||[]).find(x=>x[2]===nm); if(!s) return;
+      line.forEach(p=>{ const d=Math.hypot(p[0]-s[0],p[1]-s[1]); if(d<dmin)dmin=d; });
+    });
+    if(dmin<bd){bd=dmin;best=line;}
+  });
+  return (bd<300)?best:null;
+}
+function __arcPos(line,px,pz){
+  // Naechster Punkt auf der Linie -> Bogenlaenge s
+  let bd=1e18,bs=0,cum=0;
+  for(let k=0;k<line.length-1;k++){
+    const ax=line[k][0],az=line[k][1],bx=line[k+1][0],bz=line[k+1][1];
+    const dx=bx-ax,dz=bz-az,L2=dx*dx+dz*dz||1;
+    const t=Math.max(0,Math.min(1,((px-ax)*dx+(pz-az)*dz)/L2));
+    const dd=Math.hypot(px-(ax+dx*t),pz-(az+dz*t));
+    const segL=Math.sqrt(L2);
+    if(dd<bd){bd=dd;bs=cum+segL*t;}
+    cum+=segL;
+  }
+  return {s:bs,d:bd};
+}
+let __followBeam=null, __followTrain=null;
 function jumpToTrain(st,dp){
+  __followBar.classList.add('open');
+  __panel.classList.remove('open');
+  const yB=st.u?-SUB_DEPTH:terrainY(st.x,st.z);
+  // U-Bahn: echte Position aus Abfahrtsdaten berechnen
+  if(st.u&&(dp.line==='U2'||dp.line==='U5')){
+    const seq=U_SEQ[dp.line], line=__uLineFor(dp.line);
+    const idx=seq.indexOf(st.n);
+    const dest=dp.dest||'';
+    const east=/Messestadt|Neuperlach|Trudering|Moosfeld/.test(dest);
+    const west=/Feldmoching|Laimer/.test(dest);
+    const dir=east?1:(west?-1:1);
+    if(line&&idx>=0){
+      // Vorherige Station in Fahrtrichtung
+      const pIdx=idx-dir;
+      const prevNm=(pIdx>=0&&pIdx<seq.length)?seq[pIdx]:null;
+      const prevSt=prevNm?(DATA.subway_stations||[]).find(x=>x[2]===prevNm):null;
+      const curSt=(DATA.subway_stations||[]).find(x=>x[2]===st.n);
+      if(prevSt&&curSt){
+        const aP=__arcPos(line,prevSt[0],prevSt[1]), bP=__arcPos(line,curSt[0],curSt[1]);
+        // Zug ist dp.mins Minuten von st entfernt; ~2.5 Min pro Station
+        const frac=Math.max(0,Math.min(1,1-(dp.mins||0)/2.5));
+        const sPos=aP.s+(bP.s-aP.s)*frac;
+        __follow={st,dp,line,lineCum:null,s:sPos,dir,v:9,real:true,nextIdx:idx+dir,seq};
+        // Hell erleuchteter Beamer ueber dem verfolgten Zug
+        if(__followBeam) scene.remove(__followBeam);
+        __followBeam=new THREE.Mesh(new THREE.CylinderGeometry(10,22,160,12,1,true),
+          new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.55,
+          blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false}));
+        __followBeam.frustumCulled=false; scene.add(__followBeam);
+        // Helles Zug-Modell an der Position
+        if(__followTrain) scene.remove(__followTrain);
+        __followTrain=new THREE.Mesh(new THREE.SphereGeometry(5,12,10),
+          new THREE.MeshBasicMaterial({color:0xeaf6ff,fog:false}));
+        __followTrain.scale.set(3.2,0.9,0.9);
+        __followTrain.material.depthTest=false; __followTrain.renderOrder=999;
+        __followTrain.frustumCulled=false; scene.add(__followTrain);
+        // Kamera nah ranzoomen
+        const p0=__posOnLine(line,sPos);
+        camera.position.set(p0.x+140,yB+170,p0.z+190);
+        controls.target.set(p0.x,yB+10,p0.z);
+        return;
+      }
+    }
+  }
+  // Fallback (S-Bahn o.a.): naechste Linie, simuliert folgen
   const lines=(DATA.subway_lines||[]).concat(DATA.rails||[]);
   let best=null,bd=1e18;
   lines.forEach(l=>{
@@ -1337,11 +1417,22 @@ function jumpToTrain(st,dp){
   });
   if(!best||bd>800){ return; }
   __follow={st,dp,line:best,t:0};
-  __followBar.classList.add('open');
-  const yB=st.u?-SUB_DEPTH:terrainY(st.x,st.z);
   camera.position.set(st.x+400,yB+500,st.z+600);
   controls.target.set(st.x,yB+40,st.z);
-  __panel.classList.remove('open');
+}
+function __posOnLine(line,s){
+  // Position bei Bogenlaenge s auf der Linie
+  let cum=0;
+  for(let k=0;k<line.length-1;k++){
+    const ax=line[k][0],az=line[k][1],bx=line[k+1][0],bz=line[k+1][1];
+    const segL=Math.hypot(bx-ax,bz-az);
+    if(cum+segL>=s){
+      const t=segL?((s-cum)/segL):0;
+      return {x:ax+(bx-ax)*t,z:az+(bz-az)*t,dx:(bx-ax)/(segL||1),dz:(bz-az)/(segL||1)};
+    }
+    cum+=segL;
+  }
+  const l=line[line.length-1]; return {x:l[0],z:l[1],dx:1,dz:0};
 }
 const __origAnimate=animate;
 animate=function(){
@@ -1363,12 +1454,29 @@ animate=function(){
     }
   }
   if(__follow){
-    __follow.t+=0.016;
-    const l=__follow.line, n=l.length;
-    const k=(__follow.t*2)%n, i0=Math.floor(k)%n, i1=(i0+1)%n, f=k-Math.floor(k);
-    const x=l[i0][0]+(l[i1][0]-l[i0][0])*f, z=l[i0][1]+(l[i1][1]-l[i0][1])*f;
-    const yB=__follow.st.u?-SUB_DEPTH:terrainY(x,z);
-    controls.target.set(x,yB+30,z);
+    if(__follow.real){
+      // Echte Verfolgung: Zug bewegt sich mit realer Geschwindigkeit auf der Tunnelgeometrie
+      __follow.s+=__follow.dir*__follow.v*0.016;
+      const p=__posOnLine(__follow.line,__follow.s);
+      const yB=-SUB_DEPTH;
+      // Kamera folgt nah ranzoomt
+      const cx=p.x+140, cz=p.z+190;
+      camera.position.lerp(new THREE.Vector3(cx,yB+170,cz),0.06);
+      controls.target.lerp(new THREE.Vector3(p.x,yB+10,p.z),0.12);
+      // Heller Beamer ueber dem Zug
+      if(__followBeam){ __followBeam.position.set(p.x,yB+80,p.z); }
+      if(__followTrain){
+        __followTrain.position.set(p.x,yB+2,p.z);
+        __followTrain.rotation.set(0,Math.atan2(-__follow.dir*p.dz,__follow.dir*p.dx),0);
+      }
+    }else{
+      __follow.t+=0.016;
+      const l=__follow.line, n=l.length;
+      const k=(__follow.t*2)%n, i0=Math.floor(k)%n, i1=(i0+1)%n, f=k-Math.floor(k);
+      const x=l[i0][0]+(l[i1][0]-l[i0][0])*f, z=l[i0][1]+(l[i1][1]-l[i0][1])*f;
+      const yB=__follow.st.u?-SUB_DEPTH:terrainY(x,z);
+      controls.target.set(x,yB+30,z);
+    }
   }
 };
 window.__v7ready=function(){ underGroup.visible=true; };
