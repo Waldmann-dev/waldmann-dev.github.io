@@ -863,20 +863,24 @@ function makeLabel(text, color, lines){
   ctx.shadowColor=color; ctx.shadowBlur=26; ctx.fillStyle='#eaffff';
   ctx.fillText(text,384,55); ctx.fillText(text,384,55);
   ctx.shadowBlur=0;
-  // Linien-Badges direkt ins Label zeichnen
-  if(lines&&lines.length&&typeof LINE_COLORS!=='undefined'){
-    const n=lines.length, bw=90, bh=55, gap=8;
-    const totalW=n*bw+(n-1)*gap;
-    const startX=(768-totalW)/2;
-    lines.forEach((ln,i)=>{
-      const x=startX+i*(bw+gap), y=110;
-      ctx.fillStyle=LINE_COLORS[ln]||'#888888';
-      if(ctx.roundRect){ ctx.beginPath(); ctx.roundRect(x,y,bw,bh,12); ctx.fill(); }
-      else { ctx.fillRect(x,y,bw,bh); }
-      ctx.fillStyle='#ffffff';
-      ctx.font='bold 34px "Courier New", monospace';
-      ctx.fillText(ln, x+bw/2, y+bh/2+2);
-    });
+  // Linien-Badges direkt ins Label zeichnen (vereinfacht für iOS)
+  if(lines&&lines.length){
+    try{
+      const n=lines.length, bw=90, bh=55, gap=8;
+      const totalW=n*bw+(n-1)*gap;
+      const startX=(768-totalW)/2;
+      for(let i=0;i<n;i++){
+        const ln=lines[i];
+        const x=startX+i*(bw+gap), y=110;
+        const col=(typeof LINE_COLORS!=='undefined'&&LINE_COLORS[ln])?LINE_COLORS[ln]:'#888888';
+        ctx.fillStyle=col;
+        ctx.fillRect(x,y,bw,bh);
+        ctx.fillStyle='#ffffff';
+        ctx.font='bold 34px monospace';
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText(ln, x+bw/2, y+bh/2);
+      }
+    }catch(e){}
   }
   ctx.fillStyle=color; ctx.font='bold 20px "Courier New", monospace';
   const tex=new THREE.CanvasTexture(cv);
