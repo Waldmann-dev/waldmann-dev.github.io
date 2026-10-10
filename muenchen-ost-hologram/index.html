@@ -853,19 +853,35 @@ await __pb(82,'MARKER WERDEN GESETZT');
 // ---------- Beacons + Labels ----------
 const labelGroup=new THREE.Group(); surfaceGroup.add(labelGroup);
 const beacons=[];
-function makeLabel(text, color){
-  const cv=document.createElement('canvas'); cv.width=768; cv.height=128;
+function makeLabel(text, color, lines){
+  const cv=document.createElement('canvas'); cv.width=768; cv.height=200;
   const ctx=cv.getContext('2d');
   let fs=54;
   ctx.font='bold '+fs+'px "Courier New", monospace';
   while(ctx.measureText(text).width>700&&fs>24){ fs-=2; ctx.font='bold '+fs+'px "Courier New", monospace'; }
   ctx.textAlign='center'; ctx.textBaseline='middle';
   ctx.shadowColor=color; ctx.shadowBlur=26; ctx.fillStyle='#eaffff';
-  ctx.fillText(text,384,60); ctx.fillText(text,384,60);
-  ctx.shadowBlur=0; ctx.fillStyle=color; ctx.font='bold 20px "Courier New", monospace';
+  ctx.fillText(text,384,55); ctx.fillText(text,384,55);
+  ctx.shadowBlur=0;
+  // Linien-Badges direkt ins Label zeichnen
+  if(lines&&lines.length&&typeof LINE_COLORS!=='undefined'){
+    const n=lines.length, bw=90, bh=55, gap=8;
+    const totalW=n*bw+(n-1)*gap;
+    const startX=(768-totalW)/2;
+    lines.forEach((ln,i)=>{
+      const x=startX+i*(bw+gap), y=110;
+      ctx.fillStyle=LINE_COLORS[ln]||'#888888';
+      if(ctx.roundRect){ ctx.beginPath(); ctx.roundRect(x,y,bw,bh,12); ctx.fill(); }
+      else { ctx.fillRect(x,y,bw,bh); }
+      ctx.fillStyle='#ffffff';
+      ctx.font='bold 34px "Courier New", monospace';
+      ctx.fillText(ln, x+bw/2, y+bh/2+2);
+    });
+  }
+  ctx.fillStyle=color; ctx.font='bold 20px "Courier New", monospace';
   const tex=new THREE.CanvasTexture(cv);
   const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,fog:false}));
-  sp.scale.set(510,85,1);
+  sp.scale.set(510,133,1);
   return sp;
 }
 function makeLineBadges(lines){
@@ -1692,24 +1708,9 @@ STATIONS.forEach(st=>{
     new THREE.MeshBasicMaterial({color:st.u?0x35d5f2:0xf59e0b,fog:false}));
   dot.position.set(st.x,yBase+30,st.z); dot.visible=false; infolabels.add(dot);
   st._dot=dot; st._ring=ring; st._bm=bm;
-  const lb=makeLabel((st.u?'U ':'S ')+st.n, st.u?'#9beaff':'#ffd21f');
-  lb.scale.set(300,50,1); lb.position.set(st.x,yBase+70,st.z); infolabels.add(lb);
+  const lb=makeLabel((st.u?'U ':'S ')+st.n, st.u?'#9beaff':'#ffd21f', st.lines);
+  lb.scale.set(510,133,1); lb.position.set(st.x,yBase+90,st.z); infolabels.add(lb);
   st._lb=lb;
-  // Badges DIREKT erstellen (kein Deferred mehr)
-  if(st.lines&&st.lines.length&&typeof makeLineBadges==='function'){
-    try{
-      const badge=makeLineBadges(st.lines);
-      if(badge){
-        const yBadge = st.u ? 350 : terrainY(st.x,st.z)+300;
-        badge.scale.multiplyScalar(2.5);
-        badge.position.set(st.x,yBadge,st.z);
-        badge.renderOrder=999;
-        badge.material.depthTest=false;
-        infolabels.add(badge);
-        st._badges=badge;
-      }
-    }catch(e){ console.warn('Badge:', e); }
-  }
 });
 function __createBadgesDeferred(){
   if(typeof makeLineBadges!=='function') return;
