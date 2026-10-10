@@ -2012,6 +2012,7 @@ renderer.domElement.addEventListener('click',e=>{
   const hits=__ray.intersectObjects(stationMarkers);
   if(hits.length){ const st=hits[0].object.userData.station; openStationPanel(st); }
   else if(__depBoard){ __clearHl(__depBoard.st); __hlSt=null; scene.remove(__depBoard.mesh); __depBoard=null; __stopDepRefresh(); __updateStButtons(); }
+  else if(__hlSt){ __clearHl(__hlSt); __hlSt=null; __updateStButtons(); }
 });
 let __follow=null;
 const __followBar=document.createElement('div'); __followBar.id='follow-bar';
