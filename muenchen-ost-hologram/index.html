@@ -1894,6 +1894,23 @@ function showDepBoard3D(st,deps){
   ctx.font='bold 120px "Courier New",monospace'; ctx.fillStyle='#7df9ff'; ctx.textAlign='center';
   let title=(st.u?'U ':'S ')+st.n; if(title.length>22) title=title.substring(0,21)+'…';
   ctx.fillText(title,W/2,180);
+  // Linien-Badges unter dem Titel
+  if(st.lines&&st.lines.length){
+    const LC={'U2':'#E30613','U5':'#8C6A2F','U7':'#8CC63F','U8':'#E30613','S1':'#00A651','S2':'#009FE3','S3':'#92278F','S4':'#E30613','S6':'#007A33','S7':'#A72828','S8':'#FFD200','19':'#1E5AA8','21':'#1E5AA8'};
+    const bw=180, bh=90, gap=15;
+    const totalW=st.lines.length*bw+(st.lines.length-1)*gap;
+    const startX=(W-totalW)/2;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    st.lines.forEach((ln,i)=>{
+      const x=startX+i*(bw+gap), y=210;
+      ctx.fillStyle=LC[ln]||'#888888';
+      ctx.fillRect(x,y,bw,bh);
+      ctx.fillStyle='#ffffff';
+      ctx.font='bold 60px monospace';
+      ctx.fillText(ln, x+bw/2, y+bh/2);
+    });
+    ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+  }
   ctx.textAlign='left';
   if(loading){
     ctx.font='96px "Courier New",monospace'; ctx.fillStyle='#5a7a8a'; ctx.textAlign='center';
