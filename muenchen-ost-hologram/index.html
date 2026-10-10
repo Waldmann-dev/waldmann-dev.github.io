@@ -173,6 +173,8 @@
   <div id="stlist-u" class="stlist"></div>
   <div class="m-title collapsible" data-target="stlist-s">S-BAHN</div>
   <div id="stlist-s" class="stlist"></div>
+  <div class="m-title collapsible" data-target="stlist-tram">TRAM</div>
+  <div id="stlist-tram" class="stlist"></div>
 </div>
 <div id="stbar"></div>
 <button id="btn-weather-float" class="off" title="Wetter AN/AUS"><span id="wx-top"><span id="wx-temp"></span><span id="wx-ico">&#127783;</span></span><span id="wx-txt">WETTER: AUS</span></button>
@@ -1668,15 +1670,25 @@ const STATIONS=[
   {n:'Karl-Preis-Platz', t:'U', id:'de:09162:1070', u:true, lines:['U2']},
   {n:'Innsbrucker Ring', t:'U', id:'de:09162:1060', u:true, lines:['U2','U5','U8']},
   {n:'Michaelibad', t:'U', id:'de:09162:1050', u:true, lines:['U5','U7','U8']},
-  {n:'Ostbahnhof', t:'U/S', id:'de:09162:5', u:true, s:true, lines:['U5','S1','S2','S3','S4','S6','S8']},
+  {n:'Ostbahnhof', t:'U/S', id:'de:09162:5', u:true, s:true, lines:['U5','S1','S2','S3','S4','S6','S8','21']},
   {n:'Josephsburg', t:'U', id:'de:09162:1220', u:true, lines:['U2']},
   {n:'Giesing', t:'U/S', id:'de:09162:1110', u:true, s:true, lines:['U2','S3','S7']},
   {n:'St.-Martin-Straße', t:'S', id:'de:09162:1100', s:true, lines:['S3','S7']},
   {n:'Leuchtenbergring', t:'S', id:'de:09162:900', s:true, lines:['S2','S4','S6','S8']},
-  {n:'Berg am Laim', t:'S', id:'de:09162:910', s:true, lines:['S2','S4','S6']},
+  {n:'Berg am Laim', t:'S', id:'de:09162:910', s:true, lines:['S2','S4','S6','19']},
   {n:'Trudering', t:'U/S', id:'de:09162:920', u:true, s:true, lines:['U2','S4','S6']},
   {n:'Quiddestraße', t:'U', id:'de:09162:1040', u:true, lines:['U5','U7','U8']},
   {n:'Neuperlach Zentrum', t:'U', id:'de:09162:1030', u:true, lines:['U5','U7','U8']},
+  // Tram 21 (Ostbahnhof → St.-Veit-Straße)
+  {n:'Haidenauplatz', t:'Tram', tram:true, lines:['21'], x:-800, z:-1180},
+  {n:'Ampfingstraße', t:'Tram', tram:true, lines:['21'], x:500, z:-1110},
+  {n:'Schlüsselbergstraße', t:'Tram', tram:true, lines:['21'], x:1000, z:-1080},
+  {n:'Baumkirchner Straße', t:'Tram', tram:true, lines:['21'], x:1500, z:-1050},
+  {n:'Mutschellestraße', t:'Tram', tram:true, lines:['21'], x:2800, z:-950},
+  {n:'Kreillerstraße', t:'Tram', tram:true, lines:['21'], x:200, z:-1120},
+  {n:'St.-Veit-Straße', t:'Tram', tram:true, lines:['21'], x:3257, z:-967},
+  // Tram 19 (Berg am Laim)
+  {n:'Einsteinstraße', t:'Tram', tram:true, lines:['19'], x:0, z:-1750},
 ];
 // Linienfarben (MUSS vor makeLabel definiert sein)
 const LINE_COLORS={
@@ -1713,7 +1725,7 @@ STATIONS.forEach(st=>{
     new THREE.MeshBasicMaterial({color:st.u?0x35d5f2:0xf59e0b,fog:false}));
   dot.position.set(st.x,yBase+30,st.z); dot.visible=false; infolabels.add(dot);
   st._dot=dot; st._ring=ring; st._bm=bm;
-  const lb=makeLabel((st.u?'U ':'S ')+st.n, st.u?'#9beaff':'#ffd21f', st.lines);
+  const lb=makeLabel((st.u?'U ':(st.tram?'T ':'S '))+st.n, st.u?'#9beaff':(st.tram?'#ffe135':'#ffd21f'), st.lines);
   lb.scale.set(510,133,1); lb.position.set(st.x,yBase+90,st.z); infolabels.add(lb);
   st._lb=lb;
 });
@@ -1769,7 +1781,7 @@ function __gotoStationPanel(st){ __gotoStation(st); openStationPanel(st); }
     };
   });
   const lu=document.getElementById('stlist-u'), ls=document.getElementById('stlist-s'),
-        lt=document.getElementById('stlist-t'), lb=document.getElementById('stlist-b');
+        lt=document.getElementById('stlist-tram'), lb=document.getElementById('stlist-b');
   STATIONS.forEach(st=>{
     if(st.x===undefined) return;
     const b=document.createElement('button');
@@ -1862,8 +1874,8 @@ async function fetchDeps(st){
     __depCache[st.id]={t:now,d:{deps,offline:false}};
     return __depCache[st.id].d;
   }catch(e){
-    const lines=st.u?['U2','U5']:['S4','S6'];
-    const deps=lines.flatMap((ln,i)=>[{line:ln,dest:st.u?'Innenstadt':'Ostbahnhof',mins:3+i*7,delay:0,type:st.u?'UBAHN':'SBAHN',platform:'',cancelled:false}]).slice(0,4);
+    const lines=st.lines&&st.lines.length?st.lines:(st.u?['U2','U5']:['S4','S6']);
+    const deps=lines.flatMap((ln,i)=>[{line:ln,dest:st.u?'Innenstadt':(st.tram?'St.-Veit-Straße':'Ostbahnhof'),mins:3+i*7,delay:0,type:st.tram?'TRAM':(st.u?'UBAHN':'SBAHN'),platform:'',cancelled:false}]).slice(0,4);
     return {deps,offline:true};
   }
 }
@@ -1890,7 +1902,7 @@ function showDepBoard3D(st,deps){
   ctx.fillStyle='rgba(8,22,36,0.94)'; ctx.fillRect(0,0,W,H);
   ctx.strokeStyle='#2dd4ee'; ctx.lineWidth=10; ctx.strokeRect(10,10,W-20,H-20);
   ctx.font='bold 120px "Courier New",monospace'; ctx.fillStyle='#7df9ff'; ctx.textAlign='center';
-  let title=(st.u?'U ':'S ')+st.n; if(title.length>22) title=title.substring(0,21)+'…';
+  let title=(st.u?'U ':(st.tram?'T ':'S '))+st.n; if(title.length>22) title=title.substring(0,21)+'…';
   ctx.fillText(title,W/2,180);
   // Linien-Badges unter dem Titel
   if(st.lines&&st.lines.length){
