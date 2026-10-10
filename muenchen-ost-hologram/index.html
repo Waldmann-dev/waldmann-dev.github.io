@@ -1032,7 +1032,7 @@ for(let i=0;i<3;i++){
   const r=new THREE.Mesh(new THREE.RingGeometry(0.97,1.0,128),
     new THREE.MeshBasicMaterial({color:0x35d5f2,transparent:true,opacity:0.4,
       blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false}));
-  r.rotation.x=-Math.PI/2; r.position.set(PCX,terrainY(PCX,PCZ)+3,PCZ); surfaceGroup.add(r);
+  r.rotation.x=-Math.PI/2; r.position.set(686,terrainY(686,-213)+3,-213); surfaceGroup.add(r); // Hechtseestr. 72
   scans.push({mesh:r,off:i/3});
 }
 const DIAG=Math.hypot(X1-X0,ZS-ZN);
@@ -2279,5 +2279,5 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{
 setTimeout(function(){ try{ __createBadgesDeferred(); }catch(e){ console.warn('Badge-Init:', e); } }, 3000);
 })();
 </script>
-<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v8.17</div></body>
+<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v8.18</div></body>
 </html>
