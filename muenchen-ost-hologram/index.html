@@ -1717,7 +1717,8 @@ STATIONS.forEach(st=>{
   const lb=makeLabel((st.u?'U ':'S ')+st.n, st.u?'#9beaff':'#ffd21f');
   lb.scale.set(300,50,1); lb.position.set(st.x,yBase+70,st.z); infolabels.add(lb);
   st._lb=lb;
-  // Linien-Badges (U2, U5, S4, etc. in offiziellen Farben)
+  // Linien-Badges TEMPORÄR DEAKTIVIERT (Ladeproblem) - TODO: fixen
+  /*
   if(st.lines&&st.lines.length){
     const badge=makeLineBadges(st.lines);
     if(badge){
@@ -1726,6 +1727,7 @@ STATIONS.forEach(st=>{
       st._badges=badge;
     }
   }
+  */
 });
 // Stations-Seitenleiste (extra Panel, nicht im Hamburger-Menü)
 let __hlSt=null, __hlT0=0;
