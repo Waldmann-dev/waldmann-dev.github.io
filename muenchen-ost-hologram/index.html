@@ -1704,6 +1704,18 @@ async function fetchDeps(st){
   }
 }
 let __depBoard=null;
+let __depTimer=null;
+function __stopDepRefresh(){ if(__depTimer){ clearInterval(__depTimer); __depTimer=null; } }
+function __startDepRefresh(st){
+  __stopDepRefresh();
+  // Alle 30 Sekunden Abfahrten neu laden (Live-Aktualisierung)
+  __depTimer=setInterval(()=>{
+    if(!__depBoard||__depBoard.st!==st){ __stopDepRefresh(); return; }
+    fetchDeps(st).then(res=>{
+      if(__depBoard&&__depBoard.st===st){ showDepBoard3D(st,res.deps); __updateStButtons(); }
+    }).catch(()=>{});
+  },30000);
+}
 function showDepBoard3D(st,deps){
   if(__depBoard){ __clearHl(__depBoard.st); scene.remove(__depBoard.mesh); __depBoard.mesh.material.map.dispose(); __depBoard.mesh.material.dispose(); __depBoard=null; }
   const loading=!deps||!deps.length;
@@ -1764,17 +1776,17 @@ function openStationPanel(st){
     __clearHl(st); __hlSt=null;
     if(__depBoard.mesh.material.map){__depBoard.mesh.material.map.dispose();}
     __depBoard.mesh.material.dispose();
-    scene.remove(__depBoard.mesh); __depBoard=null;
+    scene.remove(__depBoard.mesh); __depBoard=null; __stopDepRefresh();
     flyToHome();
     __updateStButtons();
     return;
   }
-  if(__depBoard){ __clearHl(__depBoard.st); __hlSt=null; scene.remove(__depBoard.mesh); __depBoard=null; }
+  if(__depBoard){ __clearHl(__depBoard.st); __hlSt=null; scene.remove(__depBoard.mesh); __depBoard=null; __stopDepRefresh(); }
   // Tafel SOFORT zeigen (Ladezustand), Daten kommen per API nach
   showDepBoard3D(st,[]); __updateStButtons();
   fetchDeps(st).then(res=>{
     // Nur anzeigen, wenn die Station noch ausgewählt ist (Race-Condition-Fix)
-    if(__depBoard&&__depBoard.st===st){ showDepBoard3D(st,res.deps); __updateStButtons(); }
+    if(__depBoard&&__depBoard.st===st){ showDepBoard3D(st,res.deps); __updateStButtons(); __startDepRefresh(st); }
   });
   __setHl(st);
 }
@@ -1797,7 +1809,7 @@ renderer.domElement.addEventListener('click',e=>{
   }
   const hits=__ray.intersectObjects(stationMarkers);
   if(hits.length){ const st=hits[0].object.userData.station; openStationPanel(st); }
-  else if(__depBoard){ __clearHl(__depBoard.st); __hlSt=null; scene.remove(__depBoard.mesh); __depBoard=null; __updateStButtons(); }
+  else if(__depBoard){ __clearHl(__depBoard.st); __hlSt=null; scene.remove(__depBoard.mesh); __depBoard=null; __stopDepRefresh(); __updateStButtons(); }
 });
 let __follow=null;
 const __followBar=document.createElement('div'); __followBar.id='follow-bar';
