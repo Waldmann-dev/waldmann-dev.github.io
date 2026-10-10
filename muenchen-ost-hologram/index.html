@@ -1744,14 +1744,31 @@ function __createBadgesDeferred(){
 }
 // Stations-Seitenleiste (extra Panel, nicht im Hamburger-Menü)
 let __hlSt=null, __hlT0=0;
+function __refreshLabel(st, withBadges){
+  if(!st||!st._lb) return;
+  const old=st._lb;
+  const yBase=st.u?-SUB_DEPTH:terrainY(st.x,st.z);
+  const lb=makeLabel((st.u?'U ':'S ')+st.n, st.u?'#9beaff':'#ffd21f', withBadges?st.lines:null);
+  lb.scale.set(510,133,1); lb.position.set(st.x,yBase+90,st.z);
+  infolabels.remove(old);
+  if(old.material.map) old.material.map.dispose();
+  old.material.dispose();
+  infolabels.add(lb);
+  st._lb=lb;
+}
 function __clearHl(st){
   if(!st) return;
   if(st._dot){st._dot.scale.set(1,1,1);st._dot.visible=false;}
   if(st._ring){st._ring.material.opacity=0.7;st._ring.visible=false;}
   if(st._bm){st._bm.scale.set(1,1,1);st._bm.material.opacity=0.16;st._bm.visible=false;}
-  if(st._lb)st._lb.scale.set(300,50,1);
+  // Badges wieder einblenden wenn abgewählt
+  __refreshLabel(st, true);
 }
-function __setHl(st){ __clearHl(__hlSt); __hlSt=st; __hlT0=performance.now(); }
+function __setHl(st){
+  __clearHl(__hlSt); __hlSt=st; __hlT0=performance.now();
+  // Badges ausblenden wenn ausgewählt (nur in Tafel sichtbar)
+  if(st) __refreshLabel(st, false);
+}
 function __gotoStation(st){ flyToStation(st); __setHl(st); }
 function __gotoStationPanel(st){ __gotoStation(st); openStationPanel(st); }
 (function(){
