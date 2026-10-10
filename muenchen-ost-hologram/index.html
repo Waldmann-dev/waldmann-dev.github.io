@@ -162,6 +162,7 @@
   <div class="m-title">STEUERUNG</div>
   <button id="btn-traffic">&#128663; VERKEHR: AN</button>
   <button id="btn-live" class="off">&#128308; LIVE: AUS</button>
+  <button id="btn-weather" class="off">&#127783; WETTER: AUS</button>
   <button id="btn-labels">LABELS: AN</button>
   <button id="btn-rotate">&#10227; AUTO-ROTATION: AN</button>
   <button id="btn-focus" class="off">BAHN-MODUS: AUS</button>
@@ -1273,6 +1274,108 @@ btnT.onclick=()=>{trafficOn=!trafficOn;trafficGroup.visible=trafficOn;
   btnT.innerHTML='&#128663; VERKEHR: '+(trafficOn?'AN':'AUS');
   btnT.classList.toggle('off',!trafficOn);};
 document.getElementById('btn-live').onclick=()=>setLive(!liveOn);
+// WETTER-SYSTEM (DWD via Bright Sky) – Button AN/AUS, Regen/Wolken/Sonne/Nacht/Sonnenuntergang
+let __weatherOn=false, __weatherData=null, __rain=null, __clouds=[], __weatherTimer=null;
+const __btnW=document.getElementById('btn-weather');
+function __setWeatherUI(on){
+  __btnW.innerHTML='&#127783; WETTER: '+(on?'AN':'AUS');
+  __btnW.classList.toggle('off',!on);
+}
+async function __fetchWeather(){
+  try{
+    const today=new Date().toISOString().split('T')[0];
+    const r=await fetch(`https://api.brightsky.dev/weather?lat=48.12&lon=11.63&date=${today}`);
+    const d=await r.json();
+    const now=new Date(); const hr=now.getHours()+now.getMinutes()/60;
+    // Finde aktuelle Stunde
+    let best=d.weather[0], bd=99;
+    d.weather.forEach(w=>{
+      const wh=new Date(w.timestamp).getHours()+new Date(w.timestamp).getMinutes()/60;
+      const diff=Math.abs(wh-hr); if(diff<bd){bd=diff;best=w;}
+    });
+    __weatherData=best;
+    __applyWeather();
+  }catch(e){ /* offline: Wetter bleibt aus */ }
+}
+function __mkRain(intensity){
+  if(__rain){scene.remove(__rain);__rain.geometry.dispose();__rain=null;}
+  if(intensity<=0) return;
+  const N=Math.floor(800+2200*intensity);
+  const pos=new Float32Array(N*3);
+  for(let i=0;i<N;i++){
+    pos[i*3]=PCX+(Math.random()-0.5)*5000;
+    pos[i*3+1]=Math.random()*1500;
+    pos[i*3+2]=PCZ+(Math.random()-0.5)*5000;
+  }
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  const m=new THREE.PointsMaterial({color:0x7df9ff,size:3,transparent:true,opacity:0.5+0.3*intensity,sizeAttenuation:true});
+  __rain=new THREE.Points(g,m);
+  __rain.userData={speed:18+22*intensity};
+  scene.add(__rain);
+}
+function __mkClouds(cover){
+  __clouds.forEach(c=>{scene.remove(c);c.material.map.dispose();c.material.dispose();});
+  __clouds=[];
+  if(cover<30) return;
+  const n=Math.floor(3+cover/15);
+  for(let i=0;i<n;i++){
+    const cv=document.createElement('canvas');cv.width=256;cv.height=128;
+    const cx=cv.getContext('2d');
+    for(let k=0;k<25;k++){
+      const x=30+Math.random()*196, y=40+Math.random()*48, r=18+Math.random()*30;
+      const gr=cx.createRadialGradient(x,y,0,x,y,r);
+      gr.addColorStop(0,'rgba(160,180,200,0.35)');gr.addColorStop(1,'rgba(160,180,200,0)');
+      cx.fillStyle=gr;cx.beginPath();cx.arc(x,y,r,0,7);cx.fill();
+    }
+    const tex=new THREE.CanvasTexture(cv);
+    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,opacity:0.5+cover/250,depthWrite:false}));
+    sp.scale.set(1800+Math.random()*1200,900+Math.random()*600,1);
+    sp.position.set(PCX+(Math.random()-0.5)*6000, 1200+Math.random()*400, PCZ+(Math.random()-0.5)*6000);
+    sp.userData={vx:2+Math.random()*4};
+    scene.add(sp); __clouds.push(sp);
+  }
+}
+function __applyWeather(){
+  if(!__weatherOn||!__weatherData){
+    if(__rain){scene.remove(__rain);__rain=null;}
+    __clouds.forEach(c=>scene.remove(c));__clouds=[];
+    scene.background.set(0x04060d);
+    return;
+  }
+  const w=__weatherData;
+  const isNight=w.icon.includes('night');
+  const isRain=w.precipitation>0.1||w.condition.includes('rain')||w.condition.includes('drizzle');
+  const cloud=w.cloud_cover||0;
+  const solar=w.solar||0;
+  // Regen
+  __mkRain(isRain?Math.min(1,w.precipitation/2+0.3):0);
+  // Wolken
+  __mkClouds(cloud);
+  // Hintergrund: Nacht / Sonnenuntergang / Tag
+  const hr=new Date().getHours()+new Date().getMinutes()/60;
+  const isSunset=(hr>17&&hr<19.5&&solar<0.05&&!isNight);
+  if(isNight){
+    scene.background.set(0x02030a); // tiefdunkel
+  }else if(isSunset){
+    scene.background.set(0x1a0d08); // Sonnenuntergang-Orange
+  }else if(cloud>70){
+    scene.background.set(0x0a0f16); // bewölkt-grau
+  }else if(solar>0.15){
+    scene.background.set(0x0a1a2e); // sonnig-heller
+  }else{
+    scene.background.set(0x04060d); // Standard
+  }
+}
+__btnW.onclick=()=>{
+  __weatherOn=!__weatherOn;
+  __setWeatherUI(__weatherOn);
+  if(__weatherOn){ __fetchWeather(); __weatherTimer=setInterval(__fetchWeather,15*60*1000); }
+  else{
+    if(__weatherTimer){clearInterval(__weatherTimer);__weatherTimer=null;}
+    __applyWeather();
+  }
+};
 window.addEventListener('keydown',e=>{ // Pfeiltasten: Fokuszentrum verschieben (Kamera+Target)
   const k=e.key;
   if(k==='ArrowLeft'||k==='ArrowRight'||k==='ArrowUp'||k==='ArrowDown'){
@@ -1721,6 +1824,16 @@ animate=function(){
     if(st._ring){st._ring.visible=true;st._ring.material.opacity=0.45+0.45*b;}
     if(st._dot){st._dot.visible=true;st._dot.scale.set(1,1,1);}
   }
+  // Wetter-Animation: Regen fällt, Wolken driften
+  if(__rain){
+    const p=__rain.geometry.attributes.position.array, sp=__rain.userData.speed;
+    for(let i=0;i<p.length;i+=3){
+      p[i+1]-=sp;
+      if(p[i+1]<0){p[i+1]=1500;p[i]=PCX+(Math.random()-0.5)*5000;p[i+2]=PCZ+(Math.random()-0.5)*5000;}
+    }
+    __rain.geometry.attributes.position.needsUpdate=true;
+  }
+  __clouds.forEach(c=>{ c.position.x+=c.userData.vx; if(c.position.x>PCX+3500)c.position.x=PCX-3500; });
   if(__follow){
     if(__follow.real){
       // Echte Verfolgung: Zug bewegt sich mit realer Geschwindigkeit auf der Tunnelgeometrie
