@@ -814,13 +814,17 @@ DATA.street_labels.forEach(s=>{
 // Zoom-Update in animate()
 window.__updateStreetLabels=function(){
   const dist=camera.position.distanceTo(controls.target);
-  let maxLevel=0;
-  if(dist<1200) maxLevel=3;
-  else if(dist<2500) maxLevel=2;
-  else if(dist<4500) maxLevel=1;
-  else maxLevel=0;
+  let maxLevel=0, radius=0;
+  if(dist<1200){ maxLevel=3; radius=900; }
+  else if(dist<2500){ maxLevel=2; radius=1800; }
+  else if(dist<4500){ maxLevel=1; radius=3500; }
+  else { maxLevel=0; radius=6000; }
+  const tx=controls.target.x, tz=controls.target.z;
+  const r2=radius*radius;
   for(const sp of labelSprites){
-    sp.visible = sp.userData.level<=maxLevel;
+    if(sp.userData.level>maxLevel){ sp.visible=false; continue; }
+    const dx=sp.position.x-tx, dz=sp.position.z-tz;
+    sp.visible = (dx*dx+dz*dz)<=r2;
   }
 };
 
@@ -2238,5 +2242,5 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{
 setTimeout(function(){ try{ __createBadgesDeferred(); }catch(e){ console.warn('Badge-Init:', e); } }, 3000);
 })();
 </script>
-<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v8.04</div></body>
+<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v8.05</div></body>
 </html>
