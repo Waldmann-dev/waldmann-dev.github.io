@@ -1946,9 +1946,9 @@ function showDepBoard3D(st,deps){
     ctx.fillText(dest,420,y+125);
     ctx.textAlign='right'; ctx.fillStyle=dp.cancelled?'#ff5fa2':'#eaffff';
     ctx.font='bold 96px "Courier New",monospace';
-    ctx.fillText(dp.cancelled?'FÄLLT AUS':dp.mins+' MIN',W-70,y+125);
+    ctx.fillText(dp.cancelled?'FÄLLT AUS':dp.mins+' MIN',W-120,y+125);
     ctx.textAlign='right';
-    if(dp.delay>0&&!dp.cancelled){ ctx.fillStyle='#ff5fa2'; ctx.font='72px "Courier New",monospace'; ctx.fillText('+'+dp.delay+' MIN',W-70,y+190); }
+    if(dp.delay>0&&!dp.cancelled){ ctx.fillStyle='#ff5fa2'; ctx.font='72px "Courier New",monospace'; ctx.fillText('+'+dp.delay+' MIN',W-120,y+190); }
     ctx.textAlign='left';
     ctx.strokeStyle='rgba(45,212,238,0.18)'; ctx.lineWidth=4;
     ctx.beginPath(); ctx.moveTo(48,y+LH-8); ctx.lineTo(W-48,y+LH-8); ctx.stroke();
@@ -1957,7 +1957,7 @@ function showDepBoard3D(st,deps){
   tex.anisotropy=8;
   tex.minFilter=THREE.LinearFilter; tex.magFilter=THREE.LinearFilter;
   const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,fog:false}));
-  const sc=0.2; // größer (410 WU breit), 4x Auflösung für scharfe Schrift
+  const sc=0.22; // etwas größer (450 WU breit), 4x Auflösung für scharfe Schrift
   sp.scale.set(W*sc,H*sc,1);
   const yBase=st.u?-SUB_DEPTH:terrainY(st.x,st.z);
   // Mittig unter der Station, einen Tick tiefer (kein seitlicher Versatz mehr)
