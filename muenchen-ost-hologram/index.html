@@ -856,24 +856,17 @@ const beacons=[];
 function makeLabel(text, color, lines){
   const cv=document.createElement('canvas'); cv.width=768; cv.height=200;
   const ctx=cv.getContext('2d');
-  let fs=54;
-  ctx.font='bold '+fs+'px "Courier New", monospace';
-  while(ctx.measureText(text).width>700&&fs>24){ fs-=2; ctx.font='bold '+fs+'px "Courier New", monospace'; }
-  ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.shadowColor=color; ctx.shadowBlur=26; ctx.fillStyle='#eaffff';
-  ctx.fillText(text,384,55); ctx.fillText(text,384,55);
-  ctx.shadowBlur=0;
-  // Linien-Badges direkt ins Label zeichnen (vereinfacht für iOS)
+  // Linien-Badges OBEN zeichnen
   if(lines&&lines.length){
     try{
+      const LC={'U2':'#E30613','U5':'#8C6A2F','U7':'#8CC63F','U8':'#E30613','S1':'#00A651','S2':'#009FE3','S3':'#92278F','S4':'#E30613','S6':'#007A33','S7':'#A72828','S8':'#FFD200','19':'#1E5AA8','21':'#1E5AA8'};
       const n=lines.length, bw=90, bh=55, gap=8;
       const totalW=n*bw+(n-1)*gap;
       const startX=(768-totalW)/2;
       for(let i=0;i<n;i++){
         const ln=lines[i];
-        const x=startX+i*(bw+gap), y=110;
-        const col=(typeof LINE_COLORS!=='undefined'&&LINE_COLORS[ln])?LINE_COLORS[ln]:'#888888';
-        ctx.fillStyle=col;
+        const x=startX+i*(bw+gap), y=20;
+        ctx.fillStyle=LC[ln]||'#888888';
         ctx.fillRect(x,y,bw,bh);
         ctx.fillStyle='#ffffff';
         ctx.font='bold 34px monospace';
@@ -882,6 +875,14 @@ function makeLabel(text, color, lines){
       }
     }catch(e){}
   }
+  // Stationsname UNTEN
+  let fs=54;
+  ctx.font='bold '+fs+'px "Courier New", monospace';
+  while(ctx.measureText(text).width>700&&fs>24){ fs-=2; ctx.font='bold '+fs+'px "Courier New", monospace'; }
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.shadowColor=color; ctx.shadowBlur=26; ctx.fillStyle='#eaffff';
+  ctx.fillText(text,384,140); ctx.fillText(text,384,140);
+  ctx.shadowBlur=0;
   ctx.fillStyle=color; ctx.font='bold 20px "Courier New", monospace';
   const tex=new THREE.CanvasTexture(cv);
   const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,fog:false}));
@@ -1678,6 +1679,7 @@ const STATIONS=[
   {n:'Quiddestraße', t:'U', id:'de:09162:1040', u:true, lines:['U5','U7','U8']},
   {n:'Neuperlach Zentrum', t:'U', id:'de:09162:1030', u:true, lines:['U5','U7','U8']},
 ];
+// Linienfarben (MUSS vor makeLabel definiert sein)
 const LINE_COLORS={
 'U2':'#E30613','U5':'#8C6A2F','U7':'#8CC63F','U8':'#E30613',
 'S1':'#00A651','S2':'#009FE3','S3':'#92278F','S4':'#E30613','S6':'#007A33','S7':'#A72828','S8':'#FFD200',
