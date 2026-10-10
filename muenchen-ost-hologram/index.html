@@ -265,6 +265,14 @@ const KX = Math.cos(LAT0*Math.PI/180)*111320, KZ = 110540;
 const X0 = (BBOX[1]-LON0)*KX, X1 = (BBOX[3]-LON0)*KX;   // West, Ost in m
 const ZN = -(BBOX[2]-LAT0)*KZ, ZS = -(BBOX[0]-LAT0)*KZ;   // Nord(-z), Sued(+z) in m
 const POLY = DATA.meta.poly; // [[x,z]...] Nutzer-Polygon
+function __ptInPoly(x,z){
+  let inside=false;
+  for(let i=0,j=POLY.length-1;i<POLY.length;j=i++){
+    const xi=POLY[i][0], zi=POLY[i][1], xj=POLY[j][0], zj=POLY[j][1];
+    if(((zi>z)!==(zj>z))&&(x<(xj-xi)*(z-zi)/(zj-zi)+xi)) inside=!inside;
+  }
+  return inside;
+}
 function pip(x, z){
   let inside=false; const n=POLY.length; let j=n-1;
   for(let i=0;i<n;i++){
@@ -1202,7 +1210,7 @@ const pedRoutes=pickPolys(pathPolys,25,70);
 const pedMesh=new THREE.InstancedMesh(new THREE.SphereGeometry(1.15,8,6),
   new THREE.MeshBasicMaterial({color:0xfff2b0,transparent:true,opacity:0.95,blending:THREE.AdditiveBlending,depthWrite:false,fog:false}),Math.max(pedRoutes.length,1));
 const peds=pedRoutes.map((r,i)=>({r,s:Math.random()*r.len,v:1+Math.random()*1.2,dir:i%2?1:-1,i}));
-trafficGroup.add(trainMesh,pedMesh);
+trafficGroup.add(pedMesh);
 // U-Bahnen (C2-Look: silber/blau) auf echten Tunnelstrecken
 const subRoutes=pickPolys(DATA.subway_lines,300,4);
 const subMesh=meshFromParts(ubahnGeo(),Math.max(subRoutes.length,1),0.95);
