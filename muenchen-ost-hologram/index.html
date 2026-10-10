@@ -57,6 +57,20 @@
   #menu button:hover{background:rgba(34,211,238,.2);}
   #menu button.off{opacity:.45;}
   #station-list button{text-align:left;}
+  #sttab{top:64px;left:20px;font-size:22px;cursor:pointer;pointer-events:auto;
+    color:#7df9ff;text-shadow:0 0 12px #22d3ee;background:rgba(4,12,20,.72);
+    border:1px solid #164e63;border-radius:6px;padding:6px 12px;z-index:20;}
+  #stsidebar{top:116px;left:20px;background:rgba(4,12,20,.92);border:1px solid #164e63;
+    border-radius:6px;padding:12px;display:none;pointer-events:auto;z-index:20;
+    max-height:62vh;overflow-y:auto;min-width:200px;}
+  #stsidebar.open{display:block;}
+  #stsidebar .m-title{font-size:12px;letter-spacing:3px;color:#7df9ff;margin:10px 0 6px;
+    text-shadow:0 0 8px #22d3ee;}
+  #stsidebar .m-title:first-child{margin-top:0;}
+  #stsidebar button{display:block;width:100%;margin:4px 0;padding:8px 10px;text-align:left;
+    background:rgba(14,42,56,.6);border:1px solid #164e63;border-radius:4px;
+    font-family:inherit;font-size:11px;letter-spacing:1px;cursor:pointer;}
+  #stsidebar button:hover{background:rgba(34,211,238,.2);}
   #legend-overlay{left:20px;bottom:18px;background:rgba(4,12,20,.85);border:1px solid #164e63;
     border-radius:6px;padding:10px 14px;font-size:11px;letter-spacing:1px;z-index:15;}
   #legend-overlay .row{display:flex;align-items:center;margin:4px 0;}
@@ -112,6 +126,13 @@
   <div class="row"><span class="chip" style="color:#9beaff"></span>GEL&Auml;NDE 2,5x &Uuml;BERH&Ouml;HT</div>
 </div>
 <div class="hud" id="hamburger">&#9776;</div>
+<div class="hud" id="sttab">&#128646;</div>
+<div class="hud" id="stsidebar">
+  <div class="m-title">U-BAHN</div>
+  <div id="stlist-u"></div>
+  <div class="m-title">S-BAHN</div>
+  <div id="stlist-s"></div>
+</div>
 <div class="hud" id="menu">
   <div class="m-title">STEUERUNG</div>
   <button id="btn-traffic">&#128663; VERKEHR: AN</button>
@@ -1107,16 +1128,27 @@ STATIONS.forEach(st=>{
   const dot=new THREE.Mesh(new THREE.SphereGeometry(10,12,12),
     new THREE.MeshBasicMaterial({color:st.u?0x35d5f2:0xf59e0b,fog:false}));
   dot.position.set(st.x,yBase+30,st.z); infolabels.add(dot);
+  st._dot=dot; st._ring=ring;
   const lb=makeLabel((st.u?'U ':'S ')+st.n, st.u?'#9beaff':'#ffd21f');
   lb.scale.set(200,50,1); lb.position.set(st.x,yBase+70,st.z); infolabels.add(lb);
 });
-const __sl=document.getElementById('station-list');
-if(__sl){ STATIONS.forEach(st=>{
-  if(st.x===undefined) return;
-  const b=document.createElement('button'); b.textContent=(st.u?'U ':'S ')+st.n;
-  b.onclick=()=>{ flyToStation(st); __menu.classList.remove('open'); };
-  __sl.appendChild(b);
-});}
+// Stations-Seitenleiste (extra Panel, nicht im Hamburger-Menü)
+let __hlSt=null, __hlT0=0;
+function __gotoStation(st){ flyToStation(st); __hlSt=st; __hlT0=performance.now(); }
+(function(){
+  const tab=document.getElementById('sttab'), side=document.getElementById('stsidebar');
+  if(!tab||!side) return;
+  tab.onclick=()=>side.classList.toggle('open');
+  const lu=document.getElementById('stlist-u'), ls=document.getElementById('stlist-s');
+  STATIONS.forEach(st=>{
+    if(st.x===undefined) return;
+    const b=document.createElement('button');
+    b.textContent=(st.u?'U ':'S ')+st.n;
+    b.style.color=st.u?'#9beaff':'#ffd21f';
+    b.onclick=()=>__gotoStation(st);
+    (st.u?lu:ls).appendChild(b);
+  });
+})();
 function flyToStation(st){
   const yBase=st.u ? -SUB_DEPTH : terrainY(st.x,st.z);
   const ty=yBase+40;
@@ -1191,7 +1223,7 @@ renderer.domElement.addEventListener('click',e=>{
   __mouse.x=(e.clientX/innerWidth)*2-1; __mouse.y=-(e.clientY/innerHeight)*2+1;
   __ray.setFromCamera(__mouse,camera);
   const hits=__ray.intersectObjects(stationMarkers);
-  if(hits.length){ openStationPanel(hits[0].object.userData.station); }
+  if(hits.length){ const st=hits[0].object.userData.station; openStationPanel(st); __hlSt=st; __hlT0=performance.now(); }
 });
 let __follow=null;
 const __followBar=document.createElement('div'); __followBar.id='follow-bar';
@@ -1215,6 +1247,18 @@ function jumpToTrain(st,dp){
 const __origAnimate=animate;
 animate=function(){
   __origAnimate();
+  if(__hlSt){ // Station leuchtet nach Sprung pulsierend auf
+    const k=(performance.now()-__hlT0)/3500;
+    if(k>=1){
+      if(__hlSt._dot)__hlSt._dot.scale.set(1,1,1);
+      if(__hlSt._ring)__hlSt._ring.material.opacity=0.7;
+      __hlSt=null;
+    }else{
+      const w=Math.abs(Math.sin(k*Math.PI*3)), p=1+1.4*w;
+      if(__hlSt._dot)__hlSt._dot.scale.set(p,p,p);
+      if(__hlSt._ring)__hlSt._ring.material.opacity=Math.min(1,0.7+0.5*w);
+    }
+  }
   if(__follow){
     __follow.t+=0.016;
     const l=__follow.line, n=l.length;
