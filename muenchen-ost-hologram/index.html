@@ -73,15 +73,15 @@
   #stsidebar button:hover{background:rgba(34,211,238,.2);}
   /* Mobile Bottom-Bar fuer Stationen (nur <768px) */
   #stbar{display:none;}
-  #btn-weather-float{position:fixed;left:20px;bottom:140px;z-index:26;
+  #btn-weather-float{position:fixed;left:20px;bottom:70px;z-index:26;
     border-radius:16px;border:1px solid #2dd4ee;background:rgba(14,42,66,.95);
     box-shadow:0 0 12px rgba(45,212,238,.5);cursor:pointer;
-    display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 16px;color:#c9f6ff;
+    display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 14px;color:#c9f6ff;
     font-family:inherit;font-weight:bold;letter-spacing:1px;}
   #btn-weather-float.off{opacity:.7;box-shadow:none;}
-  #wx-top{display:flex;align-items:center;gap:8px;font-size:18px;}
-  #wx-ico{font-size:24px;} #wx-temp{color:#7df9ff;font-size:20px;}
-  #wx-txt{font-size:11px;color:#9beaff;}
+  #wx-top{display:flex;align-items:center;gap:6px;font-size:16px;}
+  #wx-ico{font-size:20px;} #wx-temp{color:#7df9ff;font-size:17px;}
+  #wx-txt{font-size:9px;color:#9beaff;}
   #menu-info{display:none;font-size:10px;color:#5b8fa3;letter-spacing:1px;
     margin-top:10px;padding-top:10px;border-top:1px solid #164e63;line-height:1.7;}
   @media (max-width:768px){
@@ -1299,7 +1299,8 @@ function __wxIcon(w){
 function __setWeatherUI(on){
   document.getElementById('wx-txt').textContent='WETTER: '+(on?'AN':'AUS');
   document.getElementById('wx-ico').innerHTML=__wxIcon(__weatherData);
-  document.getElementById('wx-temp').textContent=(__weatherData&&on)?Math.round(__weatherData.temperature)+'°':'';
+  // Temperatur/Symbol immer anzeigen (auch wenn Effekte aus)
+  document.getElementById('wx-temp').textContent=__weatherData?Math.round(__weatherData.temperature)+'°':'--°';
   __btnW.classList.toggle('off',!on);
 }
 async function __fetchWeather(){
@@ -1319,25 +1320,54 @@ async function __fetchWeather(){
     __setWeatherUI(__weatherOn);
   }catch(e){ /* offline: Wetter bleibt aus */ }
 }
-function __mkRain(intensity){
-  if(__rain){scene.remove(__rain);__rain.geometry.dispose();__rain=null;}
+function __dropTexture(){
+  const cv=document.createElement('canvas');cv.width=32;cv.height=64;
+  const c=cv.getContext('2d');
+  const g=c.createLinearGradient(0,0,0,64);
+  g.addColorStop(0,'rgba(125,249,255,0)');g.addColorStop(0.5,'rgba(125,249,255,0.9)');g.addColorStop(1,'rgba(125,249,255,0)');
+  c.fillStyle=g;
+  c.beginPath();c.ellipse(16,32,5,26,0,0,7);c.fill();
+  return new THREE.CanvasTexture(cv);
+}
+function __snowTexture(){
+  const cv=document.createElement('canvas');cv.width=64;cv.height=64;
+  const c=cv.getContext('2d');
+  c.strokeStyle='rgba(255,255,255,0.95)';c.lineWidth=3;c.lineCap='round';
+  for(let i=0;i<6;i++){
+    const a=i*Math.PI/3;
+    c.beginPath();c.moveTo(32-Math.cos(a)*22,32-Math.sin(a)*22);
+    c.lineTo(32+Math.cos(a)*22,32+Math.sin(a)*22);c.stroke();
+    // kleine Äste
+    c.beginPath();c.moveTo(32+Math.cos(a)*12,32+Math.sin(a)*12);
+    c.lineTo(32+Math.cos(a)*18-Math.sin(a)*6,32+Math.sin(a)*18+Math.cos(a)*6);c.stroke();
+  }
+  return new THREE.CanvasTexture(cv);
+}
+let __dropTex=null, __snowTex=null;
+function __mkPrecip(intensity, isSnow){
+  if(__rain){scene.remove(__rain);__rain.geometry.dispose();__rain.material.dispose();__rain=null;}
   if(intensity<=0) return;
-  // Dichte nach Niederschlag: viel Regen = dicht, wenig = dünn (gleichmäßig überall)
+  if(!__dropTex)__dropTex=__dropTexture();
+  if(!__snowTex)__snowTex=__snowTexture();
   const N=Math.floor(1500+4500*intensity);
   const pos=new Float32Array(N*3);
-  // Großes Volumen (12000) um Kartenmitte, damit es überall gleich aussieht
+  // Mittelweg-Volumen: 8000 (nicht zu groß, nicht zu klein)
   for(let i=0;i<N;i++){
-    pos[i*3]=PCX+(Math.random()-0.5)*12000;
+    pos[i*3]=PCX+(Math.random()-0.5)*8000;
     pos[i*3+1]=Math.random()*1800;
-    pos[i*3+2]=PCZ+(Math.random()-0.5)*12000;
+    pos[i*3+2]=PCZ+(Math.random()-0.5)*8000;
   }
   const g=new THREE.BufferGeometry();
   g.setAttribute('position',new THREE.BufferAttribute(pos,3));
-  const m=new THREE.PointsMaterial({color:0x7df9ff,size:3,transparent:true,opacity:0.45+0.35*intensity,sizeAttenuation:true});
+  const tex=isSnow?__snowTex:__dropTex;
+  const sz=isSnow?26:18;
+  const m=new THREE.PointsMaterial({map:tex,color:0xffffff,size:sz,transparent:true,opacity:0.8,depthWrite:false,sizeAttenuation:true});
   __rain=new THREE.Points(g,m);
-  __rain.userData={speed:18+22*intensity};
+  __rain.renderOrder=1001; __rain.material.depthTest=false; __rain.frustumCulled=false;
+  __rain.userData={speed:isSnow?6+8*intensity:18+22*intensity, isSnow, vol:8000};
   scene.add(__rain);
 }
+function __mkRain(intensity){ __mkPrecip(intensity,false); }
 function __mkClouds(cover){
   __clouds.forEach(c=>{scene.remove(c);c.material.map.dispose();c.material.dispose();});
   __clouds=[];
@@ -1346,17 +1376,25 @@ function __mkClouds(cover){
   for(let i=0;i<n;i++){
     const cv=document.createElement('canvas');cv.width=256;cv.height=128;
     const cx=cv.getContext('2d');
-    for(let k=0;k<35;k++){
-      const x=30+Math.random()*196, y=40+Math.random()*48, r=22+Math.random()*36;
+    // Weiche Wolke: großer weicher Blob (keine harten Kanten/Boxen)
+    const gx=cv.width/2, gy=cv.height/2;
+    const main=cx.createRadialGradient(gx,gy,10,gx,gy,115);
+    main.addColorStop(0,'rgba(170,190,210,0.5)');
+    main.addColorStop(0.65,'rgba(170,190,210,0.22)');
+    main.addColorStop(1,'rgba(170,190,210,0)');
+    cx.fillStyle=main; cx.fillRect(0,0,cv.width,cv.height);
+    for(let k=0;k<10;k++){
+      const x=gx+(Math.random()-0.5)*130, y=gy+(Math.random()-0.5)*55, r=22+Math.random()*30;
       const gr=cx.createRadialGradient(x,y,0,x,y,r);
-      gr.addColorStop(0,'rgba(170,190,210,0.5)');gr.addColorStop(1,'rgba(170,190,210,0)');
+      gr.addColorStop(0,'rgba(180,200,220,0.28)');gr.addColorStop(1,'rgba(180,200,220,0)');
       cx.fillStyle=gr;cx.beginPath();cx.arc(x,y,r,0,7);cx.fill();
     }
     const tex=new THREE.CanvasTexture(cv);
-    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,opacity:0.65+cover/200,depthWrite:false}));
+    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,opacity:Math.min(0.8,0.4+cover/280),depthWrite:false,depthTest:false}));
+    sp.renderOrder=1002;
     sp.scale.set(2200+Math.random()*1400,1100+Math.random()*700,1);
-    // Tiefer (näher an der Karte) und dichter
-    sp.position.set(PCX+(Math.random()-0.5)*7000, 800+Math.random()*300, PCZ+(Math.random()-0.5)*7000);
+    // Normale Höhe 1200 (Disis Wunsch)
+    sp.position.set(PCX+(Math.random()-0.5)*7000, 1200+Math.random()*300, PCZ+(Math.random()-0.5)*7000);
     sp.userData={vx:2+Math.random()*4};
     scene.add(sp); __clouds.push(sp);
   }
@@ -1371,10 +1409,12 @@ function __applyWeather(){
   const w=__weatherData;
   const isNight=w.icon.includes('night');
   const isRain=w.precipitation>0.1||w.condition.includes('rain')||w.condition.includes('drizzle');
+  const isSnow=w.condition.includes('snow');
   const cloud=w.cloud_cover||0;
   const solar=w.solar||0;
-  // Regen
-  __mkRain(isRain?Math.min(1,w.precipitation/2+0.3):0);
+  // Regen oder Schnee (Schneeflocken statt Tropfen)
+  if(isSnow) __mkPrecip(Math.min(1,w.precipitation/2+0.3),true);
+  else __mkRain(isRain?Math.min(1,w.precipitation/2+0.3):0);
   // Wolken
   __mkClouds(cloud);
   // Hintergrund: Nacht / Sonnenuntergang / Tag
@@ -1401,6 +1441,8 @@ __btnW.onclick=()=>{
     __applyWeather();
   }
 };
+// Wetterdaten beim Start laden (Temperatur/Symbol immer sichtbar)
+__fetchWeather(); setInterval(()=>{ if(!__weatherOn) __fetchWeather(); },15*60*1000);
 window.addEventListener('keydown',e=>{ // Pfeiltasten: Fokuszentrum verschieben (Kamera+Target)
   const k=e.key;
   if(k==='ArrowLeft'||k==='ArrowRight'||k==='ArrowUp'||k==='ArrowDown'){
@@ -1674,7 +1716,7 @@ function showDepBoard3D(st,deps){
   const yBase=st.u?-SUB_DEPTH:terrainY(st.x,st.z);
   // Mittig unter der Station, einen Tick tiefer (kein seitlicher Versatz mehr)
   sp.position.set(st.x,yBase-60-(H*sc)/2,st.z);
-  sp.renderOrder=998; sp.material.depthTest=false; sp.frustumCulled=false;
+  sp.renderOrder=1000; sp.material.depthTest=false; sp.frustumCulled=false; // Tafel immer über Zügen (Fix 10.10.2026)
   scene.add(sp);
   __depBoard={mesh:sp,st,deps:list,LH:LH*sc,H:H*sc,W:W*sc,topPad:320*sc,scale:sc};
 }
@@ -1857,7 +1899,7 @@ animate=function(){
     const p=__rain.geometry.attributes.position.array, sp=__rain.userData.speed;
     for(let i=0;i<p.length;i+=3){
       p[i+1]-=sp;
-      if(p[i+1]<0){p[i+1]=1800;p[i]=PCX+(Math.random()-0.5)*12000;p[i+2]=PCZ+(Math.random()-0.5)*12000;}
+      if(p[i+1]<0){p[i+1]=1800;const v=__rain.userData.vol||8000;p[i]=PCX+(Math.random()-0.5)*v;p[i+2]=PCZ+(Math.random()-0.5)*v;}
     }
     __rain.geometry.attributes.position.needsUpdate=true;
   }
