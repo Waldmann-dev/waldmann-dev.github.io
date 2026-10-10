@@ -170,8 +170,6 @@
   <div id="stlist-u" class="stlist"></div>
   <div class="m-title collapsible" data-target="stlist-s">S-BAHN</div>
   <div id="stlist-s" class="stlist"></div>
-  <div class="m-title collapsible" data-target="stlist-t">TRAM</div>
-  <div id="stlist-t" class="stlist"></div>
 </div>
 <div id="stbar"></div>
 <button id="btn-weather-float" class="off" title="Wetter AN/AUS"><span id="wx-top"><span id="wx-temp"></span><span id="wx-ico">&#127783;</span></span><span id="wx-txt">WETTER: AUS</span></button>
@@ -1656,17 +1654,6 @@ const STATIONS=[
   {n:'Trudering', t:'S', id:'de:09162:920', s:true, lines:['S4','S6']},
   {n:'Quiddestraße', t:'U', id:'de:09162:1040', u:true, lines:['U5','U7','U8']},
   {n:'Neuperlach Zentrum', t:'U', id:'de:09162:1030', u:true, lines:['U5','U7','U8']},
-  {n:'Ostbahnhof (Tram)', t:'T', tram:true, lines:['21']},
-  {n:'Kreillerstraße', t:'T', tram:true, lines:['21']},
-  {n:'Berg am Laim (Tram)', t:'T', tram:true, lines:['21']},
-  {n:'St.-Veit-Straße', t:'T', tram:true, lines:['21']},
-  {n:'Berg am Laim Bf (Tram)', t:'T', tram:true, lines:['19']},
-  {n:'Einsteinstraße', t:'T', tram:true, lines:['19']},
-  {n:'Haidenauplatz', t:'T', tram:true, lines:['21']},
-  {n:'Ampfingstraße', t:'T', tram:true, lines:['21']},
-  {n:'Schlüsselbergstraße', t:'T', tram:true, lines:['21']},
-  {n:'Baumkirchner Straße', t:'T', tram:true, lines:['21']},
-  {n:'Mutschellestraße', t:'T', tram:true, lines:['21']},
 ];
 const LINE_COLORS={
 'U2':'#E30613','U5':'#8C6A2F','U7':'#8CC63F','U8':'#E30613',
@@ -1705,18 +1692,25 @@ STATIONS.forEach(st=>{
   const lb=makeLabel((st.u?'U ':'S ')+st.n, st.u?'#9beaff':'#ffd21f');
   lb.scale.set(300,50,1); lb.position.set(st.x,yBase+70,st.z); infolabels.add(lb);
   st._lb=lb;
-  // Linien-Badges TEMPORÄR DEAKTIVIERT (Ladeproblem) - TODO: fixen
-  /*
-  if(st.lines&&st.lines.length){
-    const badge=makeLineBadges(st.lines);
-    if(badge){
-      badge.position.set(st.x,yBase+130,st.z);
-      infolabels.add(badge);
-      st._badges=badge;
-    }
-  }
-  */
+  // Badge-Daten für verzögerte Erstellung speichern
+  if(st.lines&&st.lines.length){ st._badgeLines=st.lines; }
 });
+function __createBadgesDeferred(){
+  if(typeof makeLineBadges!=='function') return;
+  STATIONS.forEach(st=>{
+    if(!st._badgeLines||!st._badgeLines.length||st._badges) return;
+    if(st.x===undefined) return;
+    try{
+      const badge=makeLineBadges(st._badgeLines);
+      if(badge){
+        const yB=st.u?-SUB_DEPTH:terrainY(st.x,st.z);
+        badge.position.set(st.x,yB+130,st.z);
+        infolabels.add(badge);
+        st._badges=badge;
+      }
+    }catch(e){}
+  });
+}
 // Stations-Seitenleiste (extra Panel, nicht im Hamburger-Menü)
 let __hlSt=null, __hlT0=0;
 function __clearHl(st){
@@ -2154,7 +2148,10 @@ window.__v7ready=function(){ underGroup.visible=true; };
 await __pb(100,'FERTIG');
 animate();
 if(window.__v7ready)window.__v7ready();
-requestAnimationFrame(()=>requestAnimationFrame(()=>{document.getElementById('loading').style.display='none';}));
+requestAnimationFrame(()=>requestAnimationFrame(()=>{
+  document.getElementById('loading').style.display='none';
+  setTimeout(function(){ try{ __createBadgesDeferred(); }catch(e){} }, 2000);
+}));
 })();
 </script>
 </body>
