@@ -869,6 +869,35 @@ function makeLabel(text, color){
   sp.scale.set(510,85,1);
   return sp;
 }
+function makeLineBadges(lines){
+  if(!lines||!lines.length) return null;
+  const n=lines.length, bw=120, bh=80, gap=10;
+  const W=n*bw+(n-1)*gap+20, H=bh+20;
+  const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+  const ctx=cv.getContext('2d');
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  lines.forEach((ln,i)=>{
+    const x=10+i*(bw+gap), y=10;
+    const col=LINE_COLORS[ln]||'#888888';
+    // Abgerundetes Rechteck (mit Fallback)
+    ctx.fillStyle=col;
+    if(ctx.roundRect){
+      ctx.beginPath();
+      ctx.roundRect(x,y,bw,bh,15);
+      ctx.fill();
+    } else {
+      ctx.fillRect(x,y,bw,bh);
+    }
+    // Text
+    ctx.fillStyle='#ffffff';
+    ctx.font='bold 44px "Courier New", monospace';
+    ctx.fillText(ln, x+bw/2, y+bh/2+2);
+  });
+  const tex=new THREE.CanvasTexture(cv);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,fog:false}));
+  sp.scale.set(W*0.8, H*0.8, 1);
+  return sp;
+}
 const BEACON_DEF={
   'OSTBAHNHOF':{c:0x35d5f2,beam:0x35d5f2},
   'WERKSVIERTEL':{c:0x35d5f2,beam:0x35d5f2},
@@ -1617,29 +1646,29 @@ if(__btnBeam){ __btnBeam.onclick=()=>{ beamers.visible=!beamers.visible;
 if(__btnInfo){ __btnInfo.onclick=()=>{ infolabels.visible=!infolabels.visible;
   __btnInfo.innerHTML='INFOS: '+(infolabels.visible?'AN':'AUS'); __btnInfo.classList.toggle('off',!infolabels.visible); }; }
 const STATIONS=[
-  {n:'Karl-Preis-Platz', t:'U', id:'de:09162:1070', u:true},
-  {n:'Innsbrucker Ring', t:'U', id:'de:09162:1060', u:true},
-  {n:'Michaelibad', t:'U', id:'de:09162:1050', u:true},
-  {n:'Ostbahnhof', t:'U/S', id:'de:09162:5', u:true, s:true},
-  {n:'Josephsburg', t:'U', id:'de:09162:1220', u:true},
-  {n:'Giesing', t:'S', id:'de:09162:1110', s:true},
-  {n:'St.-Martin-Straße', t:'S', id:'de:09162:1100', s:true},
-  {n:'Leuchtenbergring', t:'S', id:'de:09162:900', s:true},
-  {n:'Berg am Laim', t:'S', id:'de:09162:910', s:true},
-  {n:'Trudering', t:'S', id:'de:09162:920', s:true},
-  {n:'Quiddestraße', t:'U', id:'de:09162:1040', u:true},
-  {n:'Neuperlach Zentrum', t:'U', id:'de:09162:1030', u:true},
-  {n:'Ostbahnhof (Tram)', t:'T', tram:true},
-  {n:'Kreillerstraße', t:'T', tram:true},
-  {n:'Berg am Laim (Tram)', t:'T', tram:true},
-  {n:'St.-Veit-Straße', t:'T', tram:true},
-  {n:'Berg am Laim Bf (Tram)', t:'T', tram:true},
-  {n:'Einsteinstraße', t:'T', tram:true},
-  {n:'Haidenauplatz', t:'T', tram:true},
-  {n:'Ampfingstraße', t:'T', tram:true},
-  {n:'Schlüsselbergstraße', t:'T', tram:true},
-  {n:'Baumkirchner Straße', t:'T', tram:true},
-  {n:'Mutschellestraße', t:'T', tram:true},
+  {n:'Karl-Preis-Platz', t:'U', id:'de:09162:1070', u:true, lines:['U2']},
+  {n:'Innsbrucker Ring', t:'U', id:'de:09162:1060', u:true, lines:['U2','U5','U8']},
+  {n:'Michaelibad', t:'U', id:'de:09162:1050', u:true, lines:['U5','U7','U8']},
+  {n:'Ostbahnhof', t:'U/S', id:'de:09162:5', u:true, s:true, lines:['U5','S1','S2','S3','S4','S6','S8']},
+  {n:'Josephsburg', t:'U', id:'de:09162:1220', u:true, lines:['U2']},
+  {n:'Giesing', t:'S', id:'de:09162:1110', s:true, lines:['S3','S7']},
+  {n:'St.-Martin-Straße', t:'S', id:'de:09162:1100', s:true, lines:['S3','S7']},
+  {n:'Leuchtenbergring', t:'S', id:'de:09162:900', s:true, lines:['S2','S4','S6','S8']},
+  {n:'Berg am Laim', t:'S', id:'de:09162:910', s:true, lines:['S2','S4','S6']},
+  {n:'Trudering', t:'S', id:'de:09162:920', s:true, lines:['S4','S6']},
+  {n:'Quiddestraße', t:'U', id:'de:09162:1040', u:true, lines:['U5','U7','U8']},
+  {n:'Neuperlach Zentrum', t:'U', id:'de:09162:1030', u:true, lines:['U5','U7','U8']},
+  {n:'Ostbahnhof (Tram)', t:'T', tram:true, lines:['21']},
+  {n:'Kreillerstraße', t:'T', tram:true, lines:['21']},
+  {n:'Berg am Laim (Tram)', t:'T', tram:true, lines:['21']},
+  {n:'St.-Veit-Straße', t:'T', tram:true, lines:['21']},
+  {n:'Berg am Laim Bf (Tram)', t:'T', tram:true, lines:['19']},
+  {n:'Einsteinstraße', t:'T', tram:true, lines:['19']},
+  {n:'Haidenauplatz', t:'T', tram:true, lines:['21']},
+  {n:'Ampfingstraße', t:'T', tram:true, lines:['21']},
+  {n:'Schlüsselbergstraße', t:'T', tram:true, lines:['21']},
+  {n:'Baumkirchner Straße', t:'T', tram:true, lines:['21']},
+  {n:'Mutschellestraße', t:'T', tram:true, lines:['21']},
   {n:'Ostbahnhof (Bus)', t:'B', bus:true},
   {n:'Innsbrucker Ring (Bus)', t:'B', bus:true},
   {n:'Michaelibad (Bus)', t:'B', bus:true},
@@ -1651,6 +1680,11 @@ const STATIONS=[
   {n:'St.-Veit-Straße (Bus)', t:'B', bus:true},
   {n:'Kreillerstraße (Bus)', t:'B', bus:true},
 ];
+const LINE_COLORS={
+'U2':'#E30613','U5':'#8C6A2F','U7':'#8CC63F','U8':'#E30613',
+'S1':'#00A651','S2':'#009FE3','S3':'#92278F','S4':'#E30613','S6':'#007A33','S7':'#A72828','S8':'#FFD200',
+'19':'#1E5AA8','21':'#1E5AA8'
+};
 STATIONS.forEach(st=>{
   let f=null;
   if(st.u){ f=(DATA.subway_stations||[]).find(s=>s[2]===st.n); }
@@ -1683,6 +1717,15 @@ STATIONS.forEach(st=>{
   const lb=makeLabel((st.u?'U ':'S ')+st.n, st.u?'#9beaff':'#ffd21f');
   lb.scale.set(300,50,1); lb.position.set(st.x,yBase+70,st.z); infolabels.add(lb);
   st._lb=lb;
+  // Linien-Badges (U2, U5, S4, etc. in offiziellen Farben)
+  if(st.lines&&st.lines.length){
+    const badge=makeLineBadges(st.lines);
+    if(badge){
+      badge.position.set(st.x,yBase+130,st.z);
+      infolabels.add(badge);
+      st._badges=badge;
+    }
+  }
 });
 // Stations-Seitenleiste (extra Panel, nicht im Hamburger-Menü)
 let __hlSt=null, __hlT0=0;
