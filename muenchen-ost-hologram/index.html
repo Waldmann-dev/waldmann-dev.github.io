@@ -1672,7 +1672,10 @@ function openStationPanel(st){
   if(__depBoard){ __clearHl(__depBoard.st); scene.remove(__depBoard.mesh); __depBoard=null; }
   // Tafel SOFORT zeigen (Ladezustand), Daten kommen per API nach
   showDepBoard3D(st,[]); __updateStButtons();
-  fetchDeps(st).then(res=>{ showDepBoard3D(st,res.deps); __updateStButtons(); });
+  fetchDeps(st).then(res=>{
+    // Nur anzeigen, wenn die Station noch ausgewählt ist (Race-Condition-Fix)
+    if(__depBoard&&__depBoard.st===st){ showDepBoard3D(st,res.deps); __updateStButtons(); }
+  });
   __setHl(st);
 }
 renderer.domElement.addEventListener('click',e=>{
