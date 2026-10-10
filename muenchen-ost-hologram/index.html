@@ -84,8 +84,7 @@
   #follow-bar.open{display:block;}
   #follow-bar button{padding:10px 20px;background:rgba(4,12,20,.9);border:1px solid #22d3ee;
     border-radius:6px;color:#7df9ff;font-family:inherit;font-size:12px;letter-spacing:2px;cursor:pointer;}
-  #edge-arrow{position:fixed;z-index:25;display:none;pointer-events:none;
-    font-size:42px;color:#ffd21f;text-shadow:0 0 16px #f59e0b;}
+  #loading .pct{margin-top:8px;font-size:12px;letter-spacing:2px;color:#3fd8ef;}
 
 </style>
 </head>
@@ -133,7 +132,7 @@
   <div class="row"><span class="chip" style="color:#f59e0b"></span>S-BAHN</div>
   <div class="row"><span class="chip" style="color:#35d5f2"></span>U-BAHN</div>
   <div class="row"><span class="chip" style="color:#ffd21f"></span>AUTOS &middot; FUSSG&Auml;NGER</div>
-  <div class="row"><span class="chip" style="color:#2fff7a"></span>PARKS / OSTPARK</div>
+  <div class="row"><span class="chip" style="color:#2fff7a"></span>PARKS</div>
   <div class="row"><span class="chip" style="color:#2f9dff"></span>WASSER</div>
 </div>
 <div class="hud" id="compass"><div id="needle">N</div></div>
@@ -151,7 +150,6 @@ DATA.paths=[[[[-1499.6,489.4],[-1484.1,506.9]],"footway"],[[[-1484.1,506.9],[-14
 <script>
 (async function(){
 "use strict";
-// Lade-Fortschritt
 const __pbEl=document.querySelector('#loading .bar i');
 const __pbT=document.querySelector('#loading .t');
 function __pb(pct,label){
@@ -322,7 +320,6 @@ controls.maxPolarAngle = Math.PI*0.495;
 controls.minDistance = 150; controls.maxDistance = 12000;
 
 // ---------- Helfer: Geometrien mergen ----------
-function __noCull(m){m.frustumCulled=false;return m;}
 function mergeTris(list){ // list: [{pos:[x,y,z...], col:[r,g,b...]}]
   let nv=0; list.forEach(g=>nv+=g.pos.length/3);
   const pos=new Float32Array(nv*3), col=new Float32Array(nv*3);
@@ -530,9 +527,9 @@ let roadKm=0;
   const byW={};
   const epos=[],ecol=[];
   DATA.streets.forEach(s=>{
-    const w=(ROAD_W[s[1]]||5)*1.4;
+    const w=ROAD_W[s[1]]||5;
     (byW[w]=byW[w]||[]).push(ribbonT(s[0],w,2.0,ROAD_FILL));
-    {
+    if(ROAD_MAJOR[s[1]]){
       const pts=s[0],h=w/2;
       for(let i=0;i<pts.length-1;i++){
         const ax=pts[i][0],az=pts[i][1],bx=pts[i+1][0],bz=pts[i+1][1];
@@ -552,7 +549,7 @@ let roadKm=0;
   eg.setAttribute('position',new THREE.BufferAttribute(new Float32Array(epos),3));
   eg.setAttribute('color',new THREE.BufferAttribute(new Float32Array(ecol),3));
   surfaceGroup.add(new THREE.LineSegments(eg,new THREE.LineBasicMaterial({vertexColors:true,
-    transparent:true,opacity:0.45,blending:THREE.AdditiveBlending,depthWrite:false,fog:false})));
+    transparent:true,opacity:0.55,blending:THREE.AdditiveBlending,depthWrite:false,fog:false})));
 }
 await __pb(65,'SCHIENEN WERDEN VERLEGT');
 // ---------- Schienen ECHT: dunkles Gleisbett + orange Kante ----------
@@ -604,12 +601,12 @@ await __pb(65,'SCHIENEN WERDEN VERLEGT');
     }
     return false;
   }
-  const cSW=new THREE.Color(0x9aa1ac);
+  const cSW=new THREE.Color(0x8a919c);
   function swSeg(ax,az,bx,bz){
-    const pos=[],col=[];const h=1.25;
+    const pos=[],col=[];const h=1.0;
     let dx=bx-ax,dz=bz-az;const L=Math.hypot(dx,dz)||1;dx/=L;dz/=L;
     const nx=-dz*h,nz=dx*h;
-    const ya=terrainY(ax,az)+2.1,yb=terrainY(bx,bz)+2.1;
+    const ya=terrainY(ax,az)+2.0,yb=terrainY(bx,bz)+2.0;
     const q=[[ax+nx,ya,az+nz],[ax-nx,ya,az-nz],[bx+nx,yb,bz+nz],[bx-nx,yb,bz-nz]];
     [[0,1,2],[1,3,2]].forEach(t=>t.forEach(k=>{pos.push(q[k][0],q[k][1],q[k][2]);col.push(cSW.r,cSW.g,cSW.b);}));
     return {pos,col};
@@ -691,86 +688,6 @@ if(W4){
     new THREE.LineBasicMaterial({color:0xff9a1f,transparent:true,opacity:0.95}));
   te.position.copy(tm.position); surfaceGroup.add(te);
 }
-// ---------- v6 Landmarks (formgetreu nach Fotos, KEINE Namens-Labels) ----------
-(function(){
-  function lmMesh(parts, opacity){
-    const g = mergeTris(parts);
-    const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({vertexColors:true, transparent:true, opacity: opacity===undefined?0.92:opacity, fog:false}));
-    surfaceGroup.add(m); return m;
-  }
-  // ===== Rohde & Schwarz Campus: Glas-Keil + Büro-Riegel + Rot-Schwarz-Turm =====
-  (function(){
-    const cx=-563.3, cz=-1272.9, ty=terrainY(cx,cz), P=[];
-    const wg=new THREE.BoxGeometry(26,52,26);
-    wg.applyMatrix4(new THREE.Matrix4().set(1,0.42,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1));
-    wg.translate(cx,ty+26,cz); P.push(paintGeo(wg,0x2f9dff));
-    P.push(boxAt(70,16,22, cx-58,ty+8,cz+12, 0xdfe8f2));
-    P.push(boxAt(30,9,16, cx-6,ty+4.5,cz+4, 0x2f9dff));
-    for(let k=0;k<6;k++) P.push(boxAt(25,7.2,25, cx+52,ty+3.6+k*7.2,cz-20, k%2? 0x14161c : 0xe03040));
-    P.push(boxAt(8,6,8, cx+52,ty+46,cz-20, 0x14161c));
-    lmMesh(P, 0.9);
-  })();
-  // ===== Werk 12 (MVRDV): 5 Decken, Zickzack-Treppe, gelbe Fassaden-Blöcke (body+soul sitzt hier) =====
-  (function(){
-    const cx=-1090.8, cz=-864.3, ty=terrainY(cx,cz), P=[];
-    for(let s=0;s<5;s++) P.push(boxAt(46,1.8,26, cx,ty+2.5+s*4,cz, 0xcfd6dd));
-    for(let sx=-1;sx<=1;sx+=2) for(let sz=-1;sz<=1;sz+=2)
-      P.push(boxAt(1.2,20,1.2, cx+sx*21,ty+10,cz+sz*11, 0x9aa2ab));
-    P.push(boxAt(30,15,20, cx,ty+7.5,cz-2, 0x2f9dff));
-    for(let s=0;s<4;s++){
-      const st=new THREE.BoxGeometry(13,0.9,4.2); st.rotateZ(s%2? 0.5 : -0.5);
-      st.translate(cx-8+s*5, ty+4+s*3.6, cz+14.5); P.push(paintGeo(st,0xf2f5f8));
-    }
-    P.push(boxAt(9,3,1.2, cx-12,ty+12,cz+13.6, 0xffc832));
-    P.push(boxAt(7,2.6,1.2, cx+6,ty+8,cz+13.6, 0xffc832));
-    P.push(boxAt(11,3.4,1.2, cx+2,ty+16,cz+13.6, 0xffc832));
-    P.push(boxAt(38,15,24, cx-46,ty+7.5,cz+22, 0xb5451f));
-    lmMesh(P, 0.92);
-  })();
-  // ===== Michaelibad: Sprungturm + Haupthalle + Nebengebäude =====
-  (function(){
-    const cx=1040.5, cz=270.8, ty=terrainY(cx,cz), P=[];
-    P.push(boxAt(7,3,7, cx+30,ty+1.5,cz+30, 0xeef2f6));
-    P.push(boxAt(5,3,5, cx+30,ty+4.5,cz+30, 0xe4eaf0));
-    P.push(boxAt(3.5,4,3.5, cx+30,ty+8,cz+30, 0xeef2f6));
-    [3.3,6.3,10.2].forEach(function(y){ P.push(boxAt(9,0.6,3.5, cx+33,ty+y,cz+30, 0xdfe8f2)); });
-    P.push(boxAt(65,10,20, cx-30,ty+5,cz-20, 0xe4e9ef));
-    P.push(boxAt(65,4,1.2, cx-30,ty+6,cz-9.4, 0x2f9dff));
-    P.push(boxAt(10,4,8, cx+8,ty+2,cz+42, 0xd8dee6));
-    P.push(boxAt(8,3.5,6, cx-12,ty+1.75,cz+44, 0xd8dee6));
-    lmMesh(P, 0.92);
-  })();
-  // ===== Ostbahnhof: Empfangsgebäude + Satteldach + Uhrturm + Bahnsteigdächer =====
-  (function(){
-    const cx=-1263.4, cz=-1243.6, ty=terrainY(cx,cz), P=[];
-    P.push(boxAt(110,15,24, cx,ty+7.5,cz, 0xd8dee6));
-    const r1=new THREE.BoxGeometry(112,1.2,15); r1.rotateX(0.45); r1.translate(cx,ty+18.5,cz-6.2); P.push(paintGeo(r1,0x9aa6b2));
-    const r2=new THREE.BoxGeometry(112,1.2,15); r2.rotateX(-0.45); r2.translate(cx,ty+18.5,cz+6.2); P.push(paintGeo(r2,0x9aa6b2));
-    P.push(boxAt(10,30,10, cx+52,ty+15,cz, 0xcfd6dd));
-    const zf=new THREE.CylinderGeometry(3,3,0.6,20); zf.rotateX(Math.PI/2); zf.translate(cx+52,ty+24,cz+5.2); P.push(paintGeo(zf,0xf4f7fa));
-    for(let k=0;k<3;k++) P.push(boxAt(90,1,8, cx,ty+7,cz-22-k*11, 0x8a94a0));
-    lmMesh(P, 0.92);
-  })();
-  // ===== Macherei: modernes Ensemble (Ziegel/Holz/dunkel) =====
-  (function(){
-    const cx=293.1, cz=-1551.7, ty=terrainY(cx,cz), P=[];
-    P.push(boxAt(30,18,20, cx-23,ty+9,cz+22, 0xa05a3a));
-    P.push(boxAt(26,24,22, cx+17,ty+12,cz-8, 0x9a7a4f));
-    P.push(boxAt(34,14,18, cx-3,ty+7,cz-38, 0x3a3f45));
-    P.push(boxAt(22,20,20, cx+37,ty+10,cz+32, 0xa05a3a));
-    P.push(boxAt(16,6,12, cx-23,ty+21,cz+22, 0x8a4a30));
-    lmMesh(P, 0.92);
-  })();
-  // ===== Gold's-Gym-Gebäude: dunkler Block + gelbes Band =====
-  (function(){
-    const cx=333.9, cz=-1482.3, ty=terrainY(cx,cz), P=[];
-    P.push(boxAt(42,12,26, cx,ty+6,cz, 0x23262b));
-    P.push(boxAt(42.6,2,26.6, cx,ty+11,cz, 0xffc832));
-    P.push(boxAt(30,6,1.2, cx,ty+4,cz+13.2, 0x2f9dff));
-    lmMesh(P, 0.92);
-  })();
-})();
-
 
 await __pb(82,'MARKER WERDEN GESETZT');
 // ---------- Beacons + Labels ----------
@@ -828,8 +745,8 @@ await __pb(88,'U-BAHN-TUNNEL WERDEN GEBOHRT');
     const m=new THREE.Mesh(mergeTris(geos),
       new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:0.8,
         blending:THREE.AdditiveBlending,depthWrite:false,fog:false}));
-    underGroup.add(m);
     m.frustumCulled=false;
+    underGroup.add(m);
   }
   const epos=[],ecol=[],ec=new THREE.Color(0x35d5f2);
   (DATA.subway_lines||[]).forEach(l=>{
@@ -845,13 +762,10 @@ await __pb(88,'U-BAHN-TUNNEL WERDEN GEBOHRT');
   const g=new THREE.BufferGeometry();
   g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(epos),3));
   g.setAttribute('color',new THREE.BufferAttribute(new Float32Array(ecol),3));
-  const _tunEdges=new THREE.LineSegments(g,new THREE.LineBasicMaterial({vertexColors:true,transparent:true,opacity:0.95,fog:false}));
-  _tunEdges.frustumCulled=false;
-  underGroup.add(_tunEdges);
+  underGroup.add(new THREE.LineSegments(g,new THREE.LineBasicMaterial({vertexColors:true,transparent:true,opacity:0.8,fog:false})));
   (DATA.subway_stations||[]).forEach(s=>{
     const bg=new THREE.BoxGeometry(55,14,34);
-    const bm=new THREE.Mesh(bg,new THREE.MeshBasicMaterial({color:0x35d5f2,transparent:true,opacity:0.45,fog:false}));
-    bm.frustumCulled=false;
+    const bm=new THREE.Mesh(bg,new THREE.MeshBasicMaterial({color:0x35d5f2,transparent:true,opacity:0.30,fog:false}));
     bm.position.set(s[0],-SUB_DEPTH,s[1]); underGroup.add(bm);
     const be=new THREE.LineSegments(new THREE.EdgesGeometry(bg),
       new THREE.LineBasicMaterial({color:0x9beaff,transparent:true,opacity:0.9,fog:false}));
@@ -902,32 +816,25 @@ let pGeo, pSpeed;
 })();
 
 
-// ---------- Baeume v6 (hochauflösend: Stamm + 3-stufige Krone, dicht) ----------
+// ---------- Baeume (InstancedMesh, echte OSM-Positionen) ----------
 {
-  function paintGeoS(geo,color){
-    const p=geo.getAttribute('position').array, ix=geo.getIndex();
-    const pos=[],col=[];const c=new THREE.Color(color);
-    if(ix){const ia=ix.array;for(let i=0;i<ia.length;i++){pos.push(p[ia[i]*3],p[ia[i]*3+1],p[ia[i]*3+2]);col.push(c.r,c.g,c.b);}}
-    else{for(let i=0;i<p.length;i+=3){pos.push(p[i],p[i+1],p[i+2]);col.push(c.r,c.g,c.b);}}
-    return {pos,col};
-  }
-  const trunk=new THREE.CylinderGeometry(0.32,0.62,3.4,6); trunk.translate(0,1.7,0);
-  const cr1=new THREE.IcosahedronGeometry(2.3,1); cr1.translate(0,5.0,0);
-  const cr2=new THREE.IcosahedronGeometry(1.7,1); cr2.translate(1.4,4.0,0.8);
-  const cr3=new THREE.IcosahedronGeometry(1.6,1); cr3.translate(-1.2,4.1,-0.9);
-  const treeGeo=mergeTris([paintGeoS(trunk,0x6b4a2f),paintGeoS(cr1,0x2fe87a),paintGeoS(cr2,0x27cf66),paintGeoS(cr3,0x38f285)]);
   const list=DATA.trees||[], n=list.length;
-  const treeM=new THREE.InstancedMesh(treeGeo,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:0.92,fog:false}),n);
+  const trunkG=new THREE.CylinderGeometry(0.45,0.65,3,5); trunkG.translate(0,1.5,0);
+  const crownG=new THREE.IcosahedronGeometry(2.1,0); crownG.translate(0,4.4,0);
+  const trunkM=new THREE.InstancedMesh(trunkG,new THREE.MeshBasicMaterial({color:0x6b4a2f,fog:false}),n);
+  const crownM=new THREE.InstancedMesh(crownG,new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.88,fog:false}),n);
   const d=new THREE.Object3D(), cc=new THREE.Color();
   for(let i=0;i<n;i++){
-    const p=list[i], ty=terrainY(p[0],p[1]), s=0.7+Math.random()*0.9;
-    d.position.set(p[0],ty,p[1]); d.scale.set(s,s*(0.9+Math.random()*0.3),s); d.rotation.set(0,Math.random()*6.28,0);
-    d.updateMatrix(); treeM.setMatrixAt(i,d.matrix);
-    cc.setHex(0xffffff).offsetHSL((Math.random()-0.5)*0.04,0,(Math.random()-0.5)*0.12);
-    treeM.setColorAt(i,cc);
+    const p=list[i], ty=terrainY(p[0],p[1]), s=0.7+Math.random()*0.8;
+    d.position.set(p[0],ty,p[1]); d.scale.set(s,s,s); d.rotation.set(0,Math.random()*6.28,0);
+    d.updateMatrix();
+    trunkM.setMatrixAt(i,d.matrix); crownM.setMatrixAt(i,d.matrix);
+    cc.setHex(0x2fe87a).offsetHSL((Math.random()-0.5)*0.05,0,(Math.random()-0.5)*0.14);
+    crownM.setColorAt(i,cc);
   }
-  treeM.instanceMatrix.needsUpdate=true; if(treeM.instanceColor)treeM.instanceColor.needsUpdate=true;
-  surfaceGroup.add(treeM);
+  trunkM.instanceMatrix.needsUpdate=true; crownM.instanceMatrix.needsUpdate=true;
+  if(crownM.instanceColor)crownM.instanceColor.needsUpdate=true;
+  surfaceGroup.add(trunkM); surfaceGroup.add(crownM);
 }
 
 await __pb(94,'VERKEHR WIRD GESTARTET');
@@ -1038,7 +945,7 @@ function setSub(on){
   surfaceGroup.traverse(o=>{
     if(o.material){
       const m=o.material;
-      if(on){ if(m.userData._op===undefined){ m.userData._op=(m.opacity===undefined?1:m.opacity); m.transparent=true; } m.opacity=0.08; }
+      if(on){ if(m.userData._op===undefined){ m.userData._op=(m.opacity===undefined?1:m.opacity); m.transparent=true; } m.opacity=0.25; }
       else if(m.userData._op!==undefined){ m.opacity=m.userData._op; }
     }
   });
