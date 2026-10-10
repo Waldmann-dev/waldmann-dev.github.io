@@ -853,42 +853,39 @@ await __pb(82,'MARKER WERDEN GESETZT');
 // ---------- Beacons + Labels ----------
 const labelGroup=new THREE.Group(); surfaceGroup.add(labelGroup);
 const beacons=[];
-function makeLabel(text, color){
-  const cv=document.createElement('canvas'); cv.width=768; cv.height=128;
+function makeLabel(text, color, lines){
+  const cv=document.createElement('canvas'); cv.width=768; cv.height=200;
   const ctx=cv.getContext('2d');
+  // Linien-Badges OBEN (fest integriert, v7.58-Stil)
+  if(lines&&lines.length){
+    try{
+      const LC={'U2':'#E30613','U5':'#8C6A2F','U7':'#8CC63F','U8':'#E30613','S1':'#00A651','S2':'#009FE3','S3':'#92278F','S4':'#E30613','S6':'#007A33','S7':'#A72828','S8':'#FFD200','19':'#1E5AA8','21':'#1E5AA8'};
+      const n=lines.length, bw=90, bh=55, gap=8;
+      const totalW=n*bw+(n-1)*gap;
+      const startX=(768-totalW)/2;
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      for(let i=0;i<n;i++){
+        const ln=lines[i];
+        const x=startX+i*(bw+gap), y=20;
+        ctx.fillStyle=LC[ln]||'#888888';
+        ctx.fillRect(x,y,bw,bh);
+        ctx.fillStyle='#ffffff';
+        ctx.font='bold 34px monospace';
+        ctx.fillText(ln, x+bw/2, y+bh/2);
+      }
+    }catch(e){}
+  }
   let fs=54;
   ctx.font='bold '+fs+'px "Courier New", monospace';
   while(ctx.measureText(text).width>700&&fs>24){ fs-=2; ctx.font='bold '+fs+'px "Courier New", monospace'; }
   ctx.textAlign='center'; ctx.textBaseline='middle';
   ctx.shadowColor=color; ctx.shadowBlur=26; ctx.fillStyle='#eaffff';
-  ctx.fillText(text,384,64); ctx.fillText(text,384,64);
-  ctx.shadowBlur=0; ctx.fillStyle=color; ctx.font='bold 20px "Courier New", monospace';
+  ctx.fillText(text,384,140); ctx.fillText(text,384,140);
+  ctx.shadowBlur=0;
+  ctx.fillStyle=color; ctx.font='bold 20px "Courier New", monospace';
   const tex=new THREE.CanvasTexture(cv);
   const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,fog:false}));
-  sp.scale.set(510,85,1);
-  return sp;
-}
-function makeBadgeSprite(lines){
-  if(!lines||!lines.length) return null;
-  const LC={'U2':'#E30613','U5':'#8C6A2F','U7':'#8CC63F','U8':'#E30613','S1':'#00A651','S2':'#009FE3','S3':'#92278F','S4':'#E30613','S6':'#007A33','S7':'#A72828','S8':'#FFD200','19':'#1E5AA8','21':'#1E5AA8'};
-  const n=lines.length, bw=120, bh=70, gap=10;
-  const W=n*bw+(n-1)*gap+20, H=bh+20;
-  const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
-  const ctx=cv.getContext('2d');
-  ctx.textAlign='center'; ctx.textBaseline='middle';
-  for(let i=0;i<n;i++){
-    const ln=lines[i];
-    const x=10+i*(bw+gap), y=10;
-    ctx.fillStyle=LC[ln]||'#888888';
-    ctx.fillRect(x,y,bw,bh);
-    ctx.fillStyle='#ffffff';
-    ctx.font='bold 44px monospace';
-    ctx.fillText(ln, x+bw/2, y+bh/2);
-  }
-  const tex=new THREE.CanvasTexture(cv);
-  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,fog:false}));
-  sp.scale.set(W*0.3, H*0.3, 1);
-  sp.renderOrder=999;
+  sp.scale.set(510,133,1);
   return sp;
 }
 function makeLineBadges(lines){
@@ -1716,18 +1713,9 @@ STATIONS.forEach(st=>{
     new THREE.MeshBasicMaterial({color:st.u?0x35d5f2:0xf59e0b,fog:false}));
   dot.position.set(st.x,yBase+30,st.z); dot.visible=false; infolabels.add(dot);
   st._dot=dot; st._ring=ring; st._bm=bm;
-  const lb=makeLabel((st.u?'U ':'S ')+st.n, st.u?'#9beaff':'#ffd21f');
-  lb.scale.set(510,85,1); lb.position.set(st.x,yBase+70,st.z); infolabels.add(lb);
+  const lb=makeLabel((st.u?'U ':'S ')+st.n, st.u?'#9beaff':'#ffd21f', st.lines);
+  lb.scale.set(510,133,1); lb.position.set(st.x,yBase+90,st.z); infolabels.add(lb);
   st._lb=lb;
-  // Separates Badge-Sprite (ein-/ausblendbar) - direkt über dem Label
-  if(st.lines&&st.lines.length){
-    const badge=makeBadgeSprite(st.lines);
-    if(badge){
-      badge.position.set(st.x,yBase+150,st.z);
-      infolabels.add(badge);
-      st._badge=badge;
-    }
-  }
 });
 function __createBadgesDeferred(){
   if(typeof makeLineBadges!=='function') return;
@@ -1760,12 +1748,8 @@ function __clearHl(st){
   if(st._dot){st._dot.scale.set(1,1,1);st._dot.visible=false;}
   if(st._ring){st._ring.material.opacity=0.7;st._ring.visible=false;}
   if(st._bm){st._bm.scale.set(1,1,1);st._bm.material.opacity=0.16;st._bm.visible=false;}
-  if(st._badge) st._badge.visible=true;
 }
-function __setHl(st){
-  __clearHl(__hlSt); __hlSt=st; __hlT0=performance.now();
-  if(st&&st._badge) st._badge.visible=false;
-}
+function __setHl(st){ __clearHl(__hlSt); __hlSt=st; __hlT0=performance.now(); }
 function __gotoStation(st){ flyToStation(st); __setHl(st); }
 function __gotoStationPanel(st){ __gotoStation(st); openStationPanel(st); }
 (function(){
