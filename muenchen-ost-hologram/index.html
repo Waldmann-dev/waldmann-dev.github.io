@@ -115,10 +115,10 @@
 <div class="hud" id="menu">
   <div class="m-title">STEUERUNG</div>
   <button id="btn-traffic">&#128663; VERKEHR: AN</button>
-  <button id="btn-subway" class="off">U-BAHN-EBENE: AUS</button>
+  <button id="btn-live" class="off">&#128308; LIVE: AUS</button>
   <button id="btn-labels">LABELS: AN</button>
   <button id="btn-rotate">&#10227; AUTO-ROTATION: AN</button>
-  <button id="btn-focus" class="off">BAHN-FOKUS: AUS</button>
+  <button id="btn-focus" class="off">BAHN-MODUS: AUS</button>
   <button id="btn-legend">FARBLEGENDE: AUS</button>
   <button id="btn-beamers">BEAMER: AN</button>
   <button id="btn-infos">INFOS: AN</button>
@@ -135,7 +135,6 @@
 </div>
 <div class="hud" id="compass"><div id="needle">N</div></div>
 <div class="hud" id="coords"></div>
-<div class="hud" id="subdepth">U-BAHN-EBENE &middot; ca. -14 m</div>
 <div id="loading"><div class="t">INITIALISIERE HOLOGRAMM</div><div class="bar"><i></i></div><div class="pct" id="loadpct">2%</div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -298,7 +297,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x04060d);
 scene.fog = new THREE.FogExp2(0x04060d, 0.00010);
 const surfaceGroup=new THREE.Group(); scene.add(surfaceGroup);
-const underGroup=new THREE.Group(); underGroup.visible=false; scene.add(underGroup);
+const underGroup=new THREE.Group(); underGroup.visible=true; scene.add(underGroup); // U-Bahn-Ebene fest integriert (Roentgen-Blick)
 const SUB_DEPTH=14; // echte Tiefe Muenchner U-Bahn (ca. 10-20 m, hier ca. -14 m)
 
 const camera = new THREE.PerspectiveCamera(55, innerWidth/innerHeight, 5, 60000);
@@ -742,7 +741,7 @@ await __pb(88,'U-BAHN-TUNNEL WERDEN GEBOHRT');
   if(geos.length){
     const m=new THREE.Mesh(mergeTris(geos),
       new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:0.8,
-        blending:THREE.AdditiveBlending,depthWrite:false,fog:false}));
+        blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false,fog:false}));
     m.frustumCulled=false;
     underGroup.add(m);
   }
@@ -760,15 +759,16 @@ await __pb(88,'U-BAHN-TUNNEL WERDEN GEBOHRT');
   const g=new THREE.BufferGeometry();
   g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(epos),3));
   g.setAttribute('color',new THREE.BufferAttribute(new Float32Array(ecol),3));
-  underGroup.add(new THREE.LineSegments(g,new THREE.LineBasicMaterial({vertexColors:true,transparent:true,opacity:0.8,fog:false})));
+  underGroup.add(new THREE.LineSegments(g,new THREE.LineBasicMaterial({vertexColors:true,transparent:true,opacity:0.8,depthTest:false,fog:false})));
   (DATA.subway_stations||[]).forEach(s=>{
     const bg=new THREE.BoxGeometry(55,14,34);
-    const bm=new THREE.Mesh(bg,new THREE.MeshBasicMaterial({color:0x35d5f2,transparent:true,opacity:0.30,fog:false}));
+    const bm=new THREE.Mesh(bg,new THREE.MeshBasicMaterial({color:0x35d5f2,transparent:true,opacity:0.30,depthTest:false,fog:false}));
     bm.position.set(s[0],-SUB_DEPTH,s[1]); underGroup.add(bm);
     const be=new THREE.LineSegments(new THREE.EdgesGeometry(bg),
-      new THREE.LineBasicMaterial({color:0x9beaff,transparent:true,opacity:0.9,fog:false}));
+      new THREE.LineBasicMaterial({color:0x9beaff,transparent:true,opacity:0.9,depthTest:false,fog:false}));
     be.position.copy(bm.position); underGroup.add(be);
     const lb=makeLabel('U '+s[2],'#9beaff'); lb.scale.set(220,55,1);
+    lb.material.depthTest=false;
     lb.position.set(s[0],-SUB_DEPTH+20,s[1]); underGroup.add(lb);
   });
 }
@@ -867,9 +867,75 @@ const trains=trainRoutes.map((r,i)=>({r,s:Math.random()*r.len,v:20+Math.random()
 // Autos: 3D-Hologramme (Limousine/SUV/Sport/Kompakt), beide Richtungen
 const carRoutes=pickPolys(DATA.streets.filter(s=>({motorway:1,trunk:1,primary:1,secondary:1,tertiary:1}[s[1]])).map(s=>s[0]),120,40);
 const carMeshes=[carGeoLimo,carGeoSUV,carGeoSport,carGeoKompakt].map(fn=>{
-  const m=meshFromParts(fn(),10,1.0); trafficGroup.add(m); return m;});
-const cars=carRoutes.map((r,i)=>({r,s:Math.random()*r.len,v:8+Math.random()*7,dir:i%2?1:-1,
-  off:(i%2?2.4:-2.4),mesh:i%4,slot:(i/4)|0}));
+  const m=meshFromParts(fn(),40,1.0); trafficGroup.add(m); return m;});
+// 🔴 LIVE-Verkehr via TomTom Traffic Flow API (Key domain-whitelisted auf waldmann-dev.github.io)
+const TOMTOM_KEY='ytvUvBZH0nF24PNYKBtlXngRh9HLOM6R';
+let liveOn=false; const liveFactors=new Map(); let liveTimer=null;
+const cars=[];
+function buildCars(){
+  cars.length=0;
+  const slots=[0,0,0,0];
+  carRoutes.forEach((r,i)=>{
+    const f=liveFactors.get(i)??1;
+    const n=liveOn?1+Math.round((1-f)*3):1; // Stau -> mehr Autos
+    for(let k=0;k<n;k++){
+      const mesh=(i+k)%4, slot=slots[mesh]++;
+      if(slot>=40) break;
+      cars.push({r,s:Math.random()*r.len,baseV:8+Math.random()*7,f,dir:(i+k)%2?1:-1,
+        off:((i+k)%2?2.4:-2.4),mesh,slot});
+    }
+  });
+  carMeshes.forEach((m,mi)=>{ m.count=Math.max(slots[mi],1); });
+}
+buildCars();
+function lonLat(x,z){ return [LON0+x/KX, LAT0-z/KZ]; }
+function tileXY(lon,lat,z){
+  const n=Math.pow(2,z);
+  const tx=Math.floor((lon+180)/360*n);
+  const lr=lat*Math.PI/180;
+  const ty=Math.floor((1-Math.log(Math.tan(lr)+1/Math.cos(lr))/Math.PI)/2*n);
+  return [tx,ty];
+}
+async function fetchLiveTraffic(){
+  const z=14, jobs=new Map();
+  carRoutes.forEach((r,i)=>{
+    const mid=r.pts[(r.pts.length/2)|0];
+    const ll=lonLat(mid[0],mid[1]), t=tileXY(ll[0],ll[1],z), key=t[0]+'/'+t[1];
+    if(!jobs.has(key)) jobs.set(key,{tx:t[0],ty:t[1],routes:[]});
+    jobs.get(key).routes.push(i);
+  });
+  const res=await Promise.all([...jobs.values()].map(async e=>{
+    try{
+      const ctl=new AbortController(), to=setTimeout(()=>ctl.abort(),12000);
+      const r=await fetch('https://api.tomtom.com/traffic/services/4/flowSegmentData/absolute/'+z+'/'+e.tx+'/'+e.ty+'.json?key='+TOMTOM_KEY,{signal:ctl.signal});
+      clearTimeout(to);
+      if(!r.ok) return null;
+      const d=(await r.json()).flowSegmentData;
+      if(!d||d.confidence===undefined||d.confidence<0.5) return null;
+      let f=d.currentSpeed&&d.freeFlowSpeed?d.currentSpeed/d.freeFlowSpeed:1;
+      if(d.roadClosure) f=0.15;
+      return {e,f:Math.max(0.15,Math.min(1,f))};
+    }catch(err){ return null; }
+  }));
+  let ok=0;
+  res.forEach(r=>{ if(!r) return; ok++; r.e.routes.forEach(i=>liveFactors.set(i,r.f)); });
+  return ok;
+}
+async function setLive(on){
+  const b=document.getElementById('btn-live');
+  liveOn=on;
+  if(b){ b.innerHTML='&#128308; LIVE: '+(on?'LADE&hellip;':'AUS'); b.classList.toggle('off',!on); }
+  if(on){
+    const okN=await fetchLiveTraffic();
+    if(okN>0){ buildCars(); if(b) b.innerHTML='&#128308; LIVE: AN';
+      liveTimer=setInterval(async()=>{ await fetchLiveTraffic(); buildCars(); },300000); }
+    else { liveOn=false; if(b) b.innerHTML='&#128308; LIVE: FEHLER';
+      setTimeout(()=>{ if(!liveOn&&b){ b.innerHTML='&#128308; LIVE: AUS'; b.classList.add('off'); } },3000); }
+  }else{
+    if(liveTimer){ clearInterval(liveTimer); liveTimer=null; }
+    liveFactors.clear(); buildCars();
+  }
+}
 // Fussgaenger: Lichtpunkte auf Wegen (Ping-Pong)
 const pathPolys=(DATA.paths||[]).map(p=>p[0]||p);
 const pedRoutes=pickPolys(pathPolys,25,70);
@@ -933,23 +999,6 @@ btnRe.onclick=()=>{camera.position.copy(CAM_HOME);controls.target.set(PCX,0,PCZ)
 btnT.onclick=()=>{trafficOn=!trafficOn;trafficGroup.visible=trafficOn;
   btnT.innerHTML='&#128663; VERKEHR: '+(trafficOn?'AN':'AUS');
   btnT.classList.toggle('off',!trafficOn);};
-let subOn=false;
-const btnU=document.getElementById('btn-subway'), subDepthEl=document.getElementById('subdepth');
-function setSub(on){
-  subOn=on; underGroup.visible=on;
-  subDepthEl.style.display=on?'block':'none';
-  surfaceGroup.traverse(o=>{
-    if(o.material){
-      const m=o.material;
-      if(on){ if(m.userData._op===undefined){ m.userData._op=(m.opacity===undefined?1:m.opacity); m.transparent=true; } m.opacity=0.25; }
-      else if(m.userData._op!==undefined){ m.opacity=m.userData._op; }
-    }
-  });
-  controls.target.set(PCX, on?-SUB_DEPTH:0, PCZ);
-  btnU.innerHTML='U-BAHN-EBENE: '+(on?'AN':'AUS');
-  btnU.classList.toggle('off',!on);
-}
-btnU.onclick=()=>setSub(!subOn);
 window.addEventListener('keydown',e=>{ // Pfeiltasten links/rechts: Kamera drehen
   if(e.key==='ArrowLeft'||e.key==='ArrowRight'){
     const off=camera.position.clone().sub(controls.target);
@@ -1081,19 +1130,17 @@ function flyToStation(st){
 }
 let __focusOn=false;
 const __btnFocus=document.getElementById('btn-focus');
-function __setFocus(on){
+function __setFocus(on){ // BAHN-MODUS: S-/U-Bahnen leuchten, Stationen sichtbar, Rest abgedunkelt
   __focusOn=on;
-  setSub(on); // Bahn-Fokus beinhaltet den U-Bahn-Modus (Tunnel sichtbar, Kamera auf -14 m)
   surfaceGroup.traverse(o=>{
     if(!o.material) return;
     const m=o.material;
     let p=o, keep=false;
     while(p){ if(p===trafficGroup||p===underGroup||p===beamers||p===infolabels){keep=true;break;} p=p.parent; }
-    m.transparent=true;
-    if(on){ m.opacity=keep?(m.userData._op!==undefined?m.userData._op:1):0.2; }
+    if(on){ if(m.userData._op===undefined){ m.userData._op=(m.opacity===undefined?1:m.opacity); m.transparent=true; } m.opacity=keep?m.userData._op:0.25; }
     else if(m.userData._op!==undefined){ m.opacity=m.userData._op; }
   });
-  if(__btnFocus){ __btnFocus.innerHTML='BAHN-FOKUS: '+(on?'AN':'AUS'); __btnFocus.classList.toggle('off',!on); }
+  if(__btnFocus){ __btnFocus.innerHTML='BAHN-MODUS: '+(on?'AN':'AUS'); __btnFocus.classList.toggle('off',!on); }
 }
 if(__btnFocus){ __btnFocus.onclick=()=>__setFocus(!__focusOn); }
 const __panel=document.createElement('div'); __panel.id='station-panel';
@@ -1177,12 +1224,7 @@ animate=function(){
     controls.target.set(x,yB+30,z);
   }
 };
-window.__v7ready=function(){
-  if(typeof setSub==='function'){ setSub(false);
-    const __b=document.getElementById('btn-subway');
-    if(__b){ __b.innerHTML='U-BAHN-EBENE: AUS'; __b.classList.add('off'); }
-  }
-};
+window.__v7ready=function(){ underGroup.visible=true; };
 })();
 
 await __pb(100,'FERTIG');
