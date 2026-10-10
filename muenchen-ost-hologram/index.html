@@ -1268,7 +1268,7 @@ btnR.onclick=()=>{controls.autoRotate=!controls.autoRotate;
 btnL.onclick=()=>{labelGroup.visible=!labelGroup.visible; streetLabelGroup.visible=labelGroup.visible;
   btnL.textContent='LABELS: '+(labelGroup.visible?'AN':'AUS');
   btnL.classList.toggle('off',!labelGroup.visible);};
-btnRe.onclick=()=>{camera.position.copy(CAM_HOME);controls.target.set(PCX,0,PCZ);};
+btnRe.onclick=()=>{flyToHome();};
 btnT.onclick=()=>{trafficOn=!trafficOn;trafficGroup.visible=trafficOn;
   btnT.innerHTML='&#128663; VERKEHR: '+(trafficOn?'AN':'AUS');
   btnT.classList.toggle('off',!trafficOn);};
@@ -1435,17 +1435,23 @@ function __gotoStationPanel(st){ __gotoStation(st); openStationPanel(st); }
   if(mi&&statsEl) mi.textContent=statsEl.textContent;
 })();
 let __flyIv=null;
-function flyToStation(st){
+function __flyTo(p1,t1,dur){
   if(__flyIv){clearInterval(__flyIv);__flyIv=null;}
-  const yBase=st.u ? -SUB_DEPTH : terrainY(st.x,st.z);
-  const ty=yBase+40;
   const p0=camera.position.clone(), t0=controls.target.clone();
-  const p1=new THREE.Vector3(st.x+500,ty+600,st.z+700), t1=new THREE.Vector3(st.x,ty,st.z);
   let k=0; __flyIv=setInterval(()=>{ k+=0.04;
-    if(k>=1){clearInterval(__flyIv);__flyIv=null;return;}
+    if(k>=1){clearInterval(__flyIv);__flyIv=null;camera.position.copy(p1);controls.target.copy(t1);return;}
     const e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
     camera.position.lerpVectors(p0,p1,e); controls.target.lerpVectors(t0,t1,e);
   },16);
+}
+function flyToStation(st){
+  const yBase=st.u ? -SUB_DEPTH : terrainY(st.x,st.z);
+  const ty=yBase+40;
+  const p1=new THREE.Vector3(st.x+500,ty+600,st.z+700), t1=new THREE.Vector3(st.x,ty,st.z);
+  __flyTo(p1,t1);
+}
+function flyToHome(){
+  __flyTo(CAM_HOME.clone(), new THREE.Vector3(PCX,0,PCZ));
 }
 let __focusOn=false;
 const __btnFocus=document.getElementById('btn-focus');
@@ -1552,12 +1558,11 @@ function __updateStButtons(){
   });
 }
 function openStationPanel(st){
-  // Toggle: gleiche Station nochmal klicken = abwählen (Default-Zoom)
+  // Toggle: gleiche Station nochmal klicken = abwählen (smooth rauszoomen)
   if(__depBoard&&__depBoard.st===st){
-    if(__flyIv){clearInterval(__flyIv);__flyIv=null;}
     __clearHl(st);
     scene.remove(__depBoard.mesh); __depBoard=null;
-    camera.position.copy(CAM_HOME); controls.target.set(PCX,0,PCZ);
+    flyToHome();
     __updateStButtons();
     return;
   }
