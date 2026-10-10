@@ -1108,7 +1108,6 @@ function updateTraffic(dt){
   }
   tramMesh.instanceMatrix.needsUpdate=true;
 }
-updateTraffic(0);
 
 await __pb(98,'HUD WIRD INITIALISIERT');
 // ---------- HUD ----------
@@ -1379,6 +1378,7 @@ const tramMesh=meshFromParts(tramGeo(),12,0.95);
 tramMesh.material.depthTest=false; tramMesh.renderOrder=998; scene.add(tramMesh);
 const tramSim=TRAM_LINES_ARC.map((L,i)=>({L,s:Math.random()*L.len,v:6+Math.random()*2,dir:1,i}));
 let liveTrams=[], liveTramFreshUntil=0;
+updateTraffic(0); // Erstaufruf NACH Tram-Setup (updateTraffic nutzt tramMesh)
 async function pollLiveTrams(){
   try{
     const all=await Promise.all(TRAM_STOPS.map(async st=>{
