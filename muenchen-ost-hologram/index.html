@@ -1705,25 +1705,17 @@ STATIONS.forEach(st=>{
   const lb=makeLabel((st.u?'U ':'S ')+st.n, st.u?'#9beaff':'#ffd21f');
   lb.scale.set(300,50,1); lb.position.set(st.x,yBase+70,st.z); infolabels.add(lb);
   st._lb=lb;
-  // Linien-Badges werden verzögert erstellt (nach dem Laden)
-  st._badgeLines = st.lines;
-});
-function __createBadgesDeferred(){
-  STATIONS.forEach(st=>{
-    if(!st._badgeLines||!st._badgeLines.length||st._badges) return;
-    if(st.x===undefined) return;
-    try{
-      const badge=makeLineBadges(st._badgeLines);
-      if(badge){
-        const yBase=st.u?-SUB_DEPTH:terrainY(st.x,st.z);
-        badge.position.set(st.x,yBase+130,st.z);
-        infolabels.add(badge);
-        st._badges=badge;
-      }
-    }catch(e){ /* Badge-Fehler ignorieren */ }
-  });
-}
-// Badges 2 Sekunden nach Start erstellen (nicht während des Ladens)
+  // Linien-Badges TEMPORÄR DEAKTIVIERT (Ladeproblem) - TODO: fixen
+  /*
+  if(st.lines&&st.lines.length){
+    const badge=makeLineBadges(st.lines);
+    if(badge){
+      badge.position.set(st.x,yBase+130,st.z);
+      infolabels.add(badge);
+      st._badges=badge;
+    }
+  }
+  */
 });
 // Stations-Seitenleiste (extra Panel, nicht im Hamburger-Menü)
 let __hlSt=null, __hlT0=0;
@@ -1962,7 +1954,11 @@ const __followBar=document.createElement('div'); __followBar.id='follow-bar';
 __followBar.innerHTML='<button id="btn-unfollow">FOLGEN BEENDEN</button>';
 document.body.appendChild(__followBar);
 document.getElementById('btn-unfollow').onclick=()=>{ __follow=null; if(__followBeam){scene.remove(__followBeam);__followBeam=null;} if(__followTrain){scene.remove(__followTrain);__followTrain=null;} __followBar.classList.remove('open'); };
-// U-Bahn-Linien: Stationsreihenfolge bereits oben definiert
+// U-Bahn-Linien: Stationsreihenfolge West->Ost (fuer echte Positionsberechnung)
+const U_SEQ={
+  'U2':['Karl-Preis-Platz','Innsbrucker Ring','Josephsburg'],
+  'U5':['Ostbahnhof','Innsbrucker Ring','Michaelibad']
+};
 function __uLineFor(label){
   // Finde die Tunnelgeometrie zur Linie (U2/U5) via Stationsnaehe
   const names=U_SEQ[label]; if(!names) return null;
@@ -2158,11 +2154,7 @@ window.__v7ready=function(){ underGroup.visible=true; };
 await __pb(100,'FERTIG');
 animate();
 if(window.__v7ready)window.__v7ready();
-requestAnimationFrame(()=>requestAnimationFrame(()=>{
-  document.getElementById('loading').style.display='none';
-  // Linien-Badges verzögert erstellen (nach dem Laden)
-  setTimeout(__createBadgesDeferred, 2000);
-}));
+requestAnimationFrame(()=>requestAnimationFrame(()=>{document.getElementById('loading').style.display='none';}));
 })();
 </script>
 </body>
