@@ -1749,7 +1749,10 @@ function __gotoStation(st){ flyToStation(st); __setHl(st); }
 function __gotoStationPanel(st){ __gotoStation(st); openStationPanel(st); }
 (function(){
   const tab=document.getElementById('sttab'), side=document.getElementById('stsidebar');
-  if(tab&&side) tab.onclick=()=>side.classList.toggle('open');
+  if(tab&&side){
+    side.classList.remove('open');
+    tab.onclick=()=>side.classList.toggle('open');
+  }
   // Einklappbare Gruppen
   document.querySelectorAll('#stsidebar .m-title.collapsible').forEach(h=>{
     h.onclick=()=>{
