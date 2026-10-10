@@ -887,7 +887,7 @@ function makeBadgeSprite(lines){
   }
   const tex=new THREE.CanvasTexture(cv);
   const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,fog:false}));
-  sp.scale.set(W*1.2, H*1.2, 1);
+  sp.scale.set(W*0.3, H*0.3, 1);
   sp.renderOrder=999;
   return sp;
 }
@@ -1719,12 +1719,11 @@ STATIONS.forEach(st=>{
   const lb=makeLabel((st.u?'U ':'S ')+st.n, st.u?'#9beaff':'#ffd21f');
   lb.scale.set(510,85,1); lb.position.set(st.x,yBase+70,st.z); infolabels.add(lb);
   st._lb=lb;
-  // Separates Badge-Sprite (ein-/ausblendbar)
+  // Separates Badge-Sprite (ein-/ausblendbar) - direkt über dem Label
   if(st.lines&&st.lines.length){
     const badge=makeBadgeSprite(st.lines);
     if(badge){
-      const yB=st.u?280:terrainY(st.x,st.z)+220;
-      badge.position.set(st.x,yB,st.z);
+      badge.position.set(st.x,yBase+150,st.z);
       infolabels.add(badge);
       st._badge=badge;
     }
