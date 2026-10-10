@@ -457,6 +457,50 @@ document.getElementById('app').appendChild(renderer.domElement);
 
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
 controls.target.set(686, 0, -213); // Hechtseestr. 72
+
+// ---------- Kompass: Zurück zum Mittelpunkt + Nord-Ausrichtung ----------
+(function(){
+  const comp = document.getElementById('compass');
+  if(!comp) return;
+  comp.style.cursor = 'pointer';
+  comp.title = 'Zurück zu Hechtseestr. 72 (Norden oben)';
+  comp.addEventListener('click', ()=>{
+    // Wenn eine Station ausgewählt ist (Bahnfokus), nichts tun
+    if(typeof __focusOn !== 'undefined' && __focusOn) return;
+    if(typeof __selStation !== 'undefined' && __selStation) return;
+    
+    // Kamera zurück zu Hechtseestr. 72
+    const target = new THREE.Vector3(686, 0, -213);
+    const camPos = new THREE.Vector3(686, 2500, -213 + 4300);
+    
+    // Animiere
+    const p0 = camera.position.clone();
+    const t0 = controls.target.clone();
+    const start = Date.now();
+    const dur = 800;
+    
+    function anim(){
+      const k = Math.min(1, (Date.now() - start) / dur);
+      const e = 1 - Math.pow(1-k, 3); // ease-out
+      camera.position.lerpVectors(p0, camPos, e);
+      controls.target.lerpVectors(t0, target, e);
+      // Nord-Ausrichtung: Azimuth auf 0 setzen
+      if(k >= 1){
+        // Setze Azimuthwinkel auf 0 (Norden)
+        const offset = camera.position.clone().sub(controls.target);
+        const spherical = new THREE.Spherical().setFromVector3(offset);
+        spherical.theta = 0; // Norden
+        offset.setFromSpherical(spherical);
+        camera.position.copy(controls.target).add(offset);
+        controls.update();
+        return;
+      }
+      requestAnimationFrame(anim);
+    }
+    anim();
+  });
+})();
+
 controls.enableDamping = true; controls.dampingFactor = 0.06;
 controls.autoRotate = true; controls.autoRotateSpeed = 0.5;
 controls.maxPolarAngle = Math.PI*0.495;
@@ -2282,5 +2326,5 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{
 setTimeout(function(){ try{ __createBadgesDeferred(); }catch(e){ console.warn('Badge-Init:', e); } }, 3000);
 })();
 </script>
-<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v8.21</div></body>
+<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v8.22</div></body>
 </html>
