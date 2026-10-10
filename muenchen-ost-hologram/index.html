@@ -1700,11 +1700,12 @@ STATIONS.forEach(st=>{
     try{
       const badge=makeLineBadges(st.lines);
       if(badge){
-        const yBadge = st.u ? 300 : terrainY(st.x,st.z)+250;
-        badge.scale.multiplyScalar(2.0);
+        const yBadge = st.u ? 350 : terrainY(st.x,st.z)+300;
+        badge.scale.multiplyScalar(2.5);
         badge.position.set(st.x,yBadge,st.z);
         badge.renderOrder=999;
-        infolabels.add(badge);
+        badge.material.depthTest=false;
+        scene.add(badge);
         st._badges=badge;
       }
     }catch(e){}
