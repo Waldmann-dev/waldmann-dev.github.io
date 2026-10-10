@@ -1704,10 +1704,12 @@ function __createBadgesDeferred(){
     try{
       const badge=makeLineBadges(st._badgeLines);
       if(badge){
-        const yB=st.u?-SUB_DEPTH:terrainY(st.x,st.z);
-        // Größer und höher positioniert für Sichtbarkeit
+        // Position über dem Stationslabel (yBase+70), nicht unterirdisch
+        const yBase=st.u?-SUB_DEPTH:terrainY(st.x,st.z);
+        const yBadge = st.u ? 250 : yBase+180;
+        // Größer für Sichtbarkeit
         badge.scale.multiplyScalar(1.5);
-        badge.position.set(st.x,yB+180,st.z);
+        badge.position.set(st.x,yBadge,st.z);
         badge.renderOrder=999;
         infolabels.add(badge);
         st._badges=badge;
@@ -2164,8 +2166,9 @@ animate();
 if(window.__v7ready)window.__v7ready();
 requestAnimationFrame(()=>requestAnimationFrame(()=>{
   document.getElementById('loading').style.display='none';
-  setTimeout(function(){ try{ __createBadgesDeferred(); }catch(e){} }, 2000);
 }));
+// Badges separat verzögert erstellen (außerhalb rAF für iOS-Sicherheit)
+setTimeout(function(){ try{ __createBadgesDeferred(); }catch(e){ console.warn('Badge-Init:', e); } }, 3000);
 })();
 </script>
 </body>
