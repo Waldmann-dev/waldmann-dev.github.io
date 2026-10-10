@@ -615,8 +615,8 @@ await __pb(35,'GEBÄUDE WERDEN EXTRUDIERT');
   surfaceGroup.add(new THREE.LineSegments(eg,new THREE.LineBasicMaterial({vertexColors:true,transparent:true,opacity:0.85,fog:false})));
 }
 
-// ---------- Container-Cluster Werksviertel (bunt, hologramm-stilisiert) ----------
-{
+// ---------- Container-Cluster Werksviertel (DEAKTIVIERT auf Wunsch) ----------
+if(false){
   const list = DATA.containers || [];
   const palette = [0xff2fd6,0xff9a1f,0xffd21f,0x35d5f2,0x2fff7a,0x2f9dff].map(h=>new THREE.Color(h));
   const cm = new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1),
@@ -2216,5 +2216,5 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{
 setTimeout(function(){ try{ __createBadgesDeferred(); }catch(e){ console.warn('Badge-Init:', e); } }, 3000);
 })();
 </script>
-<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v8.01</div></body>
+<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v8.02</div></body>
 </html>
