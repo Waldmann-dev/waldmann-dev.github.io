@@ -687,11 +687,13 @@ let roadKm=0;
   surfaceGroup.add(new THREE.LineSegments(lg,new THREE.LineBasicMaterial({vertexColors:true,fog:false})));
 }
 await __pb(65,'SCHIENEN WERDEN VERLEGT');
+window.__railMeshes=[];
 // ---------- Schienen ECHT: dunkles Gleisbett + orange Kante ----------
 {
   const bedMat=new THREE.Color(0x232830);
-  surfaceGroup.add(new THREE.Mesh(mergeTris(DATA.rails.map(r=>ribbonT(r,4.6,2.4,bedMat))),
-    new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:0.92,fog:false})));
+  const __railBed=new THREE.Mesh(mergeTris(DATA.rails.map(r=>ribbonT(r,4.6,2.4,bedMat))),
+    new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:0.92,fog:false}));
+  __railBed.userData.isRail=true; surfaceGroup.add(__railBed);
   const epos=[],ecol=[],oc=new THREE.Color(0xff9a1f);
   DATA.rails.forEach(r=>{
     for(let i=0;i<r.length-1;i++){
@@ -2008,6 +2010,24 @@ function openStationPanel(st){
   });
   __setHl(st);
 }
+
+// ---------- Bahnfokusmodus ----------
+window.__railFocus=false;
+window.__setRailFocus=function(on){
+  window.__railFocus=on;
+  surfaceGroup.traverse(o=>{
+    if(o.isMesh||o.isLine||o.isSprite||o.isPoints){
+      if(o.userData._origOpacity===undefined){
+        o.userData._origOpacity = o.material.opacity!==undefined ? o.material.opacity : 1;
+      }
+      const isRail = o.userData.isRail;
+      const target = on ? (isRail ? o.userData._origOpacity : o.userData._origOpacity*0.12) : o.userData._origOpacity;
+      if(o.material.transparent!==true && target<1) o.material.transparent=true;
+      o.material.opacity=target;
+    }
+  });
+};
+
 renderer.domElement.addEventListener('click',e=>{
   __mouse.x=(e.clientX/innerWidth)*2-1; __mouse.y=-(e.clientY/innerHeight)*2+1;
   __ray.setFromCamera(__mouse,camera);
@@ -2026,9 +2046,9 @@ renderer.domElement.addEventListener('click',e=>{
     }
   }
   const hits=__ray.intersectObjects(stationMarkers);
-  if(hits.length){ const st=hits[0].object.userData.station; openStationPanel(st); }
-  else if(__depBoard){ __clearHl(__depBoard.st); __hlSt=null; scene.remove(__depBoard.mesh); __depBoard=null; __stopDepRefresh(); __updateStButtons(); }
-  else if(__hlSt){ __clearHl(__hlSt); __hlSt=null; __updateStButtons(); }
+  if(hits.length){ const st=hits[0].object.userData.station; openStationPanel(st); if(window.__setRailFocus)window.__setRailFocus(true); }
+  else if(__depBoard){ __clearHl(__depBoard.st); __hlSt=null; scene.remove(__depBoard.mesh); __depBoard=null; __stopDepRefresh(); __updateStButtons(); if(window.__setRailFocus)window.__setRailFocus(false); }
+  else if(__hlSt){ __clearHl(__hlSt); __hlSt=null; __updateStButtons(); if(window.__setRailFocus)window.__setRailFocus(false); }
 });
 let __follow=null;
 const __followBar=document.createElement('div'); __followBar.id='follow-bar';
@@ -2242,5 +2262,5 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{
 setTimeout(function(){ try{ __createBadgesDeferred(); }catch(e){ console.warn('Badge-Init:', e); } }, 3000);
 })();
 </script>
-<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v8.05</div></body>
+<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v8.06</div></body>
 </html>
