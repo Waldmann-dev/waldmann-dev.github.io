@@ -667,14 +667,14 @@ if(false){
 
 // ---------- Halbkugel unter der Karte ----------
 {
-  const hx=686, hz=-213, hr=2750;
+  const hx=686, hz=-213, hr=2700;
   const hemiGeo=new THREE.SphereGeometry(hr, 48, 24, 0, Math.PI*2, Math.PI/2, Math.PI/2);
   const hemiMat=new THREE.MeshBasicMaterial({
-    color:0x1a6fd9, transparent:true, opacity:0.85, fog:false,
-    side:THREE.DoubleSide
+    color:0x1a5fc9, transparent:true, opacity:0.95, fog:false,
+    side:THREE.FrontSide
   });
   const hemi=new THREE.Mesh(hemiGeo, hemiMat);
-  hemi.position.set(hx, 0, hz);
+  hemi.position.set(hx, -120, hz);
   surfaceGroup.add(hemi);
   // Kante der Halbkugel (Übergang zur Karte)
   const edgePts=[];
@@ -2303,5 +2303,5 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{
 setTimeout(function(){ try{ __createBadgesDeferred(); }catch(e){ console.warn('Badge-Init:', e); } }, 3000);
 })();
 </script>
-<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v8.15</div></body>
+<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v8.16</div></body>
 </html>
