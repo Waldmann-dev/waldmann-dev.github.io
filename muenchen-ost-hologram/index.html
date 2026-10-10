@@ -90,7 +90,10 @@
   #menu-info{display:none;font-size:10px;color:#5b8fa3;letter-spacing:1px;
     margin-top:10px;padding-top:10px;border-top:1px solid #164e63;line-height:1.7;}
   @media (max-width:768px){
-    #sttab,#stsidebar{display:none!important;}
+    #sttab{display:block!important;position:fixed;top:70px;left:12px;z-index:30;}
+    #stsidebar{display:none;}
+    #stsidebar.open{display:block!important;position:fixed;top:110px;left:12px;z-index:29;
+      max-height:50vh;}
     #stbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:25;
       overflow-x:auto;-webkit-overflow-scrolling:touch;
       padding:10px;gap:8px;background:rgba(4,12,20,.9);
@@ -1692,8 +1695,20 @@ STATIONS.forEach(st=>{
   const lb=makeLabel((st.u?'U ':'S ')+st.n, st.u?'#9beaff':'#ffd21f');
   lb.scale.set(300,50,1); lb.position.set(st.x,yBase+70,st.z); infolabels.add(lb);
   st._lb=lb;
-  // Badge-Daten für verzögerte Erstellung speichern
-  if(st.lines&&st.lines.length){ st._badgeLines=st.lines; }
+  // Badges DIREKT erstellen (kein Deferred mehr)
+  if(st.lines&&st.lines.length&&typeof makeLineBadges==='function'){
+    try{
+      const badge=makeLineBadges(st.lines);
+      if(badge){
+        const yBadge = st.u ? 300 : terrainY(st.x,st.z)+250;
+        badge.scale.multiplyScalar(2.0);
+        badge.position.set(st.x,yBadge,st.z);
+        badge.renderOrder=999;
+        infolabels.add(badge);
+        st._badges=badge;
+      }
+    }catch(e){}
+  }
 });
 function __createBadgesDeferred(){
   if(typeof makeLineBadges!=='function') return;
