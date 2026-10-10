@@ -115,7 +115,7 @@
 <div class="hud" id="menu">
   <div class="m-title">STEUERUNG</div>
   <button id="btn-traffic">&#128663; VERKEHR: AN</button>
-  <button id="btn-subway">U-BAHN-EBENE: AN</button>
+  <button id="btn-subway" class="off">U-BAHN-EBENE: AUS</button>
   <button id="btn-labels">LABELS: AN</button>
   <button id="btn-rotate">&#10227; AUTO-ROTATION: AN</button>
   <button id="btn-focus">BAHN-FOKUS: AUS</button>
@@ -882,7 +882,7 @@ trafficGroup.add(trainMesh,pedMesh);
 // U-Bahnen (C2-Look: silber/blau) auf echten Tunnelstrecken
 const subRoutes=pickPolys(DATA.subway_lines,300,4);
 const subMesh=meshFromParts(ubahnGeo(),Math.max(subRoutes.length,1),0.95);
-underGroup.add(subMesh);
+subMesh.material.depthTest=false; subMesh.renderOrder=999; scene.add(subMesh); // U-Bahnen immer sichtbar (Roentgen-Blick), auch bei U-Bahn-Ebene AUS
 const subs=subRoutes.map((r,i)=>({r,s:Math.random()*r.len,v:16+Math.random()*6,dir:i%2?1:-1,i}));
 function updateTraffic(dt){
   trains.forEach(t=>{t.s+=t.v*dt*t.dir;
@@ -903,14 +903,12 @@ function updateTraffic(dt){
   trainMesh.instanceMatrix.needsUpdate=true;
   carMeshes.forEach(m=>m.instanceMatrix.needsUpdate=true);
   pedMesh.instanceMatrix.needsUpdate=true;
-  if(underGroup.visible){
-    subs.forEach(u=>{u.s+=u.v*dt*u.dir;
-      const p=posOn(u.r.pts,u.r.cum,u.s);
-      dummy.position.set(p.x,-SUB_DEPTH+1.0,p.z);
-      dummy.rotation.set(0,Math.atan2(-u.dir*p.dz,u.dir*p.dx),0);dummy.scale.set(2.2,2.2,2.2);dummy.updateMatrix();
-      subMesh.setMatrixAt(u.i,dummy.matrix);});
-    subMesh.instanceMatrix.needsUpdate=true;
-  }
+  subs.forEach(u=>{u.s+=u.v*dt*u.dir;
+    const p=posOn(u.r.pts,u.r.cum,u.s);
+    dummy.position.set(p.x,-SUB_DEPTH+1.0,p.z);
+    dummy.rotation.set(0,Math.atan2(-u.dir*p.dz,u.dir*p.dx),0);dummy.scale.set(2.2,2.2,2.2);dummy.updateMatrix();
+    subMesh.setMatrixAt(u.i,dummy.matrix);});
+  subMesh.instanceMatrix.needsUpdate=true;
 }
 updateTraffic(0);
 
@@ -954,6 +952,14 @@ function setSub(on){
   btnU.classList.toggle('off',!on);
 }
 btnU.onclick=()=>setSub(!subOn);
+window.addEventListener('keydown',e=>{ // Pfeiltasten links/rechts: Kamera drehen
+  if(e.key==='ArrowLeft'||e.key==='ArrowRight'){
+    const off=camera.position.clone().sub(controls.target);
+    const a=(e.key==='ArrowRight'?-1:1)*0.14, c=Math.cos(a), s=Math.sin(a);
+    camera.position.set(controls.target.x+off.x*c-off.z*s, camera.position.y, controls.target.z+off.x*s+off.z*c);
+    e.preventDefault();
+  }
+});
 function updHud(){
   const az=controls.getAzimuthalAngle();
   needle.style.transform='rotate('+(-az)+'rad)';
@@ -1172,11 +1178,9 @@ animate=function(){
   }
 };
 window.__v7ready=function(){
-  if(typeof setSub==='function'){ setSub(true);
+  if(typeof setSub==='function'){ setSub(false);
     const __b=document.getElementById('btn-subway');
-    if(__b){ __b.innerHTML='U-BAHN-EBENE: AN'; __b.classList.remove('off'); }
-    camera.position.set(PCX+1800, 900, PCZ+2600);
-    controls.target.set(PCX, -SUB_DEPTH, PCZ);
+    if(__b){ __b.innerHTML='U-BAHN-EBENE: AUS'; __b.classList.add('off'); }
   }
 };
 })();
