@@ -73,6 +73,13 @@
   #stsidebar button:hover{background:rgba(34,211,238,.2);}
   /* Mobile Bottom-Bar fuer Stationen (nur <768px) */
   #stbar{display:none;}
+  #btn-weather-float{position:fixed;right:20px;bottom:140px;z-index:26;height:52px;
+    border-radius:26px;border:1px solid #2dd4ee;background:rgba(14,42,66,.95);
+    box-shadow:0 0 12px rgba(45,212,238,.5);font-size:13px;cursor:pointer;
+    display:flex;align-items:center;gap:8px;padding:0 16px;color:#c9f6ff;
+    font-family:inherit;font-weight:bold;letter-spacing:1px;}
+  #btn-weather-float.off{opacity:.7;box-shadow:none;}
+  #wx-ico{font-size:22px;} #wx-temp{color:#7df9ff;}
   #menu-info{display:none;font-size:10px;color:#5b8fa3;letter-spacing:1px;
     margin-top:10px;padding-top:10px;border-top:1px solid #164e63;line-height:1.7;}
   @media (max-width:768px){
@@ -158,11 +165,11 @@
   <div id="stlist-s"></div>
 </div>
 <div id="stbar"></div>
+<button id="btn-weather-float" class="off" title="Wetter AN/AUS"><span id="wx-ico">&#127783;</span><span id="wx-txt">WETTER: AUS</span><span id="wx-temp"></span></button>
 <div class="hud" id="menu">
   <div class="m-title">STEUERUNG</div>
   <button id="btn-traffic">&#128663; VERKEHR: AN</button>
   <button id="btn-live" class="off">&#128308; LIVE: AUS</button>
-  <button id="btn-weather" class="off">&#127783; WETTER: AUS</button>
   <button id="btn-labels">LABELS: AN</button>
   <button id="btn-rotate">&#10227; AUTO-ROTATION: AN</button>
   <button id="btn-focus" class="off">BAHN-MODUS: AUS</button>
@@ -1276,9 +1283,21 @@ btnT.onclick=()=>{trafficOn=!trafficOn;trafficGroup.visible=trafficOn;
 document.getElementById('btn-live').onclick=()=>setLive(!liveOn);
 // WETTER-SYSTEM (DWD via Bright Sky) – Button AN/AUS, Regen/Wolken/Sonne/Nacht/Sonnenuntergang
 let __weatherOn=false, __weatherData=null, __rain=null, __clouds=[], __weatherTimer=null;
-const __btnW=document.getElementById('btn-weather');
+const __btnW=document.getElementById('btn-weather-float');
+function __wxIcon(w){
+  if(!w) return '&#127783;';
+  const c=w.condition||'', ic=w.icon||'';
+  if(c.includes('rain')||c.includes('drizzle')) return '&#127783;'; // 🌧
+  if(c.includes('snow')) return '&#127784;'; // 🌨
+  if(ic.includes('clear-day')) return '&#9728;'; // ☀
+  if(ic.includes('clear-night')) return '&#127769;'; // 🌙
+  if(ic.includes('partly-cloudy')) return '&#9925;'; // ⛅
+  return '&#9729;'; // ☁
+}
 function __setWeatherUI(on){
-  __btnW.innerHTML='&#127783; WETTER: '+(on?'AN':'AUS');
+  document.getElementById('wx-txt').textContent='WETTER: '+(on?'AN':'AUS');
+  document.getElementById('wx-ico').innerHTML=__wxIcon(__weatherData);
+  document.getElementById('wx-temp').textContent=(__weatherData&&on)?Math.round(__weatherData.temperature)+'°':'';
   __btnW.classList.toggle('off',!on);
 }
 async function __fetchWeather(){
@@ -1295,21 +1314,24 @@ async function __fetchWeather(){
     });
     __weatherData=best;
     __applyWeather();
+    __setWeatherUI(__weatherOn);
   }catch(e){ /* offline: Wetter bleibt aus */ }
 }
 function __mkRain(intensity){
   if(__rain){scene.remove(__rain);__rain.geometry.dispose();__rain=null;}
   if(intensity<=0) return;
-  const N=Math.floor(800+2200*intensity);
+  // Dichte nach Niederschlag: viel Regen = dicht, wenig = dünn (gleichmäßig überall)
+  const N=Math.floor(1500+4500*intensity);
   const pos=new Float32Array(N*3);
+  // Großes Volumen (12000) um Kartenmitte, damit es überall gleich aussieht
   for(let i=0;i<N;i++){
-    pos[i*3]=PCX+(Math.random()-0.5)*5000;
-    pos[i*3+1]=Math.random()*1500;
-    pos[i*3+2]=PCZ+(Math.random()-0.5)*5000;
+    pos[i*3]=PCX+(Math.random()-0.5)*12000;
+    pos[i*3+1]=Math.random()*1800;
+    pos[i*3+2]=PCZ+(Math.random()-0.5)*12000;
   }
   const g=new THREE.BufferGeometry();
   g.setAttribute('position',new THREE.BufferAttribute(pos,3));
-  const m=new THREE.PointsMaterial({color:0x7df9ff,size:3,transparent:true,opacity:0.5+0.3*intensity,sizeAttenuation:true});
+  const m=new THREE.PointsMaterial({color:0x7df9ff,size:3,transparent:true,opacity:0.45+0.35*intensity,sizeAttenuation:true});
   __rain=new THREE.Points(g,m);
   __rain.userData={speed:18+22*intensity};
   scene.add(__rain);
@@ -1318,20 +1340,21 @@ function __mkClouds(cover){
   __clouds.forEach(c=>{scene.remove(c);c.material.map.dispose();c.material.dispose();});
   __clouds=[];
   if(cover<30) return;
-  const n=Math.floor(3+cover/15);
+  const n=Math.floor(4+cover/12);
   for(let i=0;i<n;i++){
     const cv=document.createElement('canvas');cv.width=256;cv.height=128;
     const cx=cv.getContext('2d');
-    for(let k=0;k<25;k++){
-      const x=30+Math.random()*196, y=40+Math.random()*48, r=18+Math.random()*30;
+    for(let k=0;k<35;k++){
+      const x=30+Math.random()*196, y=40+Math.random()*48, r=22+Math.random()*36;
       const gr=cx.createRadialGradient(x,y,0,x,y,r);
-      gr.addColorStop(0,'rgba(160,180,200,0.35)');gr.addColorStop(1,'rgba(160,180,200,0)');
+      gr.addColorStop(0,'rgba(170,190,210,0.5)');gr.addColorStop(1,'rgba(170,190,210,0)');
       cx.fillStyle=gr;cx.beginPath();cx.arc(x,y,r,0,7);cx.fill();
     }
     const tex=new THREE.CanvasTexture(cv);
-    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,opacity:0.5+cover/250,depthWrite:false}));
-    sp.scale.set(1800+Math.random()*1200,900+Math.random()*600,1);
-    sp.position.set(PCX+(Math.random()-0.5)*6000, 1200+Math.random()*400, PCZ+(Math.random()-0.5)*6000);
+    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,opacity:0.65+cover/200,depthWrite:false}));
+    sp.scale.set(2200+Math.random()*1400,1100+Math.random()*700,1);
+    // Tiefer (näher an der Karte) und dichter
+    sp.position.set(PCX+(Math.random()-0.5)*7000, 800+Math.random()*300, PCZ+(Math.random()-0.5)*7000);
     sp.userData={vx:2+Math.random()*4};
     scene.add(sp); __clouds.push(sp);
   }
@@ -1832,7 +1855,7 @@ animate=function(){
     const p=__rain.geometry.attributes.position.array, sp=__rain.userData.speed;
     for(let i=0;i<p.length;i+=3){
       p[i+1]-=sp;
-      if(p[i+1]<0){p[i+1]=1500;p[i]=PCX+(Math.random()-0.5)*5000;p[i+2]=PCZ+(Math.random()-0.5)*5000;}
+      if(p[i+1]<0){p[i+1]=1800;p[i]=PCX+(Math.random()-0.5)*12000;p[i+2]=PCZ+(Math.random()-0.5)*12000;}
     }
     __rain.geometry.attributes.position.needsUpdate=true;
   }
