@@ -1434,13 +1434,15 @@ function __gotoStationPanel(st){ __gotoStation(st); openStationPanel(st); }
   const mi=document.getElementById('menu-info'), statsEl=document.getElementById('stats');
   if(mi&&statsEl) mi.textContent=statsEl.textContent;
 })();
+let __flyIv=null;
 function flyToStation(st){
+  if(__flyIv){clearInterval(__flyIv);__flyIv=null;}
   const yBase=st.u ? -SUB_DEPTH : terrainY(st.x,st.z);
   const ty=yBase+40;
   const p0=camera.position.clone(), t0=controls.target.clone();
   const p1=new THREE.Vector3(st.x+500,ty+600,st.z+700), t1=new THREE.Vector3(st.x,ty,st.z);
-  let k=0; const iv=setInterval(()=>{ k+=0.04;
-    if(k>=1){clearInterval(iv);return;}
+  let k=0; __flyIv=setInterval(()=>{ k+=0.04;
+    if(k>=1){clearInterval(__flyIv);__flyIv=null;return;}
     const e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
     camera.position.lerpVectors(p0,p1,e); controls.target.lerpVectors(t0,t1,e);
   },16);
@@ -1497,9 +1499,9 @@ async function fetchDeps(st){
 let __depBoard=null;
 function showDepBoard3D(st,deps){
   if(__depBoard){ __clearHl(__depBoard.st); scene.remove(__depBoard.mesh); __depBoard.mesh.material.map.dispose(); __depBoard.mesh.material.dispose(); __depBoard=null; }
-  if(!deps||!deps.length) return;
+  const loading=!deps||!deps.length;
   // Sehr hohe Auflösung: 2048px für gestochen scharfe Schrift
-  const n=Math.min(deps.length,6), W=2048, LH=200, H=320+n*LH;
+  const n=loading?1:Math.min(deps.length,6), W=2048, LH=200, H=320+n*LH;
   const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
   const ctx=cv.getContext('2d');
   ctx.fillStyle='rgba(8,22,36,0.94)'; ctx.fillRect(0,0,W,H);
@@ -1508,7 +1510,12 @@ function showDepBoard3D(st,deps){
   let title=(st.u?'U ':'S ')+st.n; if(title.length>22) title=title.substring(0,21)+'…';
   ctx.fillText(title,W/2,180);
   ctx.textAlign='left';
-  const list=deps.slice(0,n);
+  if(loading){
+    ctx.font='96px "Courier New",monospace'; ctx.fillStyle='#5a7a8a'; ctx.textAlign='center';
+    ctx.fillText('LADE ABFAHRTEN …',W/2,320+125);
+    ctx.textAlign='left';
+  }
+  const list=loading?[]:deps.slice(0,n);
   list.forEach((dp,i)=>{
     const y=320+i*LH;
     ctx.font='bold 110px "Courier New",monospace'; ctx.fillStyle='#7df9ff';
@@ -1547,6 +1554,7 @@ function __updateStButtons(){
 function openStationPanel(st){
   // Toggle: gleiche Station nochmal klicken = abwählen (Default-Zoom)
   if(__depBoard&&__depBoard.st===st){
+    if(__flyIv){clearInterval(__flyIv);__flyIv=null;}
     __clearHl(st);
     scene.remove(__depBoard.mesh); __depBoard=null;
     camera.position.copy(CAM_HOME); controls.target.set(PCX,0,PCZ);
@@ -1554,9 +1562,10 @@ function openStationPanel(st){
     return;
   }
   if(__depBoard){ __clearHl(__depBoard.st); scene.remove(__depBoard.mesh); __depBoard=null; }
+  // Tafel SOFORT zeigen (Ladezustand), Daten kommen per API nach
+  showDepBoard3D(st,[]); __updateStButtons();
   fetchDeps(st).then(res=>{ showDepBoard3D(st,res.deps); __updateStButtons(); });
   __setHl(st);
-  __updateStButtons();
 }
 renderer.domElement.addEventListener('click',e=>{
   __mouse.x=(e.clientX/innerWidth)*2-1; __mouse.y=-(e.clientY/innerHeight)*2+1;
