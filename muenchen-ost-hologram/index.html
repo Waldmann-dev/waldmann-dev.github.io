@@ -1492,7 +1492,7 @@ async function fetchDeps(st){
 }
 let __depBoard=null;
 function showDepBoard3D(st,deps){
-  if(__depBoard){ scene.remove(__depBoard.mesh); __depBoard.mesh.material.map.dispose(); __depBoard.mesh.material.dispose(); __depBoard=null; }
+  if(__depBoard){ __clearHl(__depBoard.st); scene.remove(__depBoard.mesh); __depBoard.mesh.material.map.dispose(); __depBoard.mesh.material.dispose(); __depBoard=null; }
   if(!deps||!deps.length) return;
   // Sehr hohe Auflösung: 2048px für gestochen scharfe Schrift
   const n=Math.min(deps.length,6), W=2048, LH=200, H=320+n*LH;
@@ -1524,7 +1524,7 @@ function showDepBoard3D(st,deps){
   tex.anisotropy=8;
   tex.minFilter=THREE.LinearFilter; tex.magFilter=THREE.LinearFilter;
   const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,fog:false}));
-  const sc=0.15; // gleiche Weltgröße (307x~245), aber 4x Auflösung
+  const sc=0.2; // größer (410 WU breit), 4x Auflösung für scharfe Schrift
   sp.scale.set(W*sc,H*sc,1);
   const yBase=st.u?-SUB_DEPTH:terrainY(st.x,st.z);
   // Mittig unter der Station, einen Tick tiefer (kein seitlicher Versatz mehr)
@@ -1534,7 +1534,7 @@ function showDepBoard3D(st,deps){
   __depBoard={mesh:sp,st,deps:list,LH:LH*sc,H:H*sc,W:W*sc,topPad:320*sc,scale:sc};
 }
 function openStationPanel(st){
-  if(__depBoard){ scene.remove(__depBoard.mesh); __depBoard=null; }
+  if(__depBoard){ __clearHl(__depBoard.st); scene.remove(__depBoard.mesh); __depBoard=null; }
   fetchDeps(st).then(res=>{ showDepBoard3D(st,res.deps); });
   __setHl(st);
 }
@@ -1557,7 +1557,7 @@ renderer.domElement.addEventListener('click',e=>{
   }
   const hits=__ray.intersectObjects(stationMarkers);
   if(hits.length){ const st=hits[0].object.userData.station; openStationPanel(st); }
-  else if(__depBoard){ scene.remove(__depBoard.mesh); __depBoard=null; }
+  else if(__depBoard){ __clearHl(__depBoard.st); scene.remove(__depBoard.mesh); __depBoard=null; }
 });
 let __follow=null;
 const __followBar=document.createElement('div'); __followBar.id='follow-bar';
@@ -1679,6 +1679,13 @@ animate=function(){
       if(__hlSt._bm){__hlSt._bm.visible=true;const bp=1+1.1*w;__hlSt._bm.scale.set(bp,1,bp);__hlSt._bm.material.opacity=Math.min(0.85,0.16+0.55*w);}
       if(__hlSt._lb){const lp=1+0.6*w;__hlSt._lb.scale.set(300*lp,50*lp,1);}
     }
+  }
+  // Blinkender Beamer solange Station ausgewählt (Board offen) – Disis Wunsch 10.10.2026
+  if(__depBoard&&__depBoard.st&&__depBoard.st!==__hlSt){
+    const st=__depBoard.st, b=0.5+0.5*Math.sin(performance.now()/350);
+    if(st._bm){st._bm.visible=true;st._bm.material.opacity=0.25+0.55*b;}
+    if(st._ring){st._ring.visible=true;st._ring.material.opacity=0.45+0.45*b;}
+    if(st._dot){st._dot.visible=true;st._dot.scale.set(1,1,1);}
   }
   if(__follow){
     if(__follow.real){
