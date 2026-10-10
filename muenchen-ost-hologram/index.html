@@ -659,11 +659,11 @@ function addRibbons(list, w, y, color, opacity){
       blending:THREE.AdditiveBlending, depthWrite:false, fog:false}));
   surfaceGroup.add(mesh);
 }
-const ROAD_W={motorway:14,trunk:12,primary:11,secondary:10,tertiary:9,
-  residential:8,unclassified:6,living_street:6,pedestrian:7,service:6,track:5,
-  motorway_link:11,trunk_link:10,primary_link:9,secondary_link:8,tertiary_link:7,elevator:4,
-  footway:4,path:4,steps:4,cycleway:5,corridor:4};
-const ROAD_FILL=new THREE.Color(0x9aa4b2), ROAD_EDGE_C=new THREE.Color(0xe8f0ff);
+const ROAD_W={motorway:20,trunk:18,primary:16,secondary:14,tertiary:12,
+  residential:12,unclassified:10,living_street:10,pedestrian:10,service:10,track:8,
+  motorway_link:16,trunk_link:14,primary_link:12,secondary_link:10,tertiary_link:8,elevator:6,
+  footway:8,path:8,steps:6,cycleway:8,corridor:6};
+const ROAD_FILL=new THREE.Color(0x4a9eff), ROAD_EDGE_C=new THREE.Color(0x88ccff);
 const ROAD_MAJOR={motorway:1,trunk:1,primary:1,secondary:1,tertiary:1,
   motorway_link:1,trunk_link:1,primary_link:1,secondary_link:1};
 let roadKm=0;
@@ -2225,5 +2225,5 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{
 setTimeout(function(){ try{ __createBadgesDeferred(); }catch(e){ console.warn('Badge-Init:', e); } }, 3000);
 })();
 </script>
-<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v7.94</div></body>
+<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v7.95</div></body>
 </html>
