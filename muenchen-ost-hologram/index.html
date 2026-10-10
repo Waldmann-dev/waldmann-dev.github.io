@@ -1947,8 +1947,9 @@ function showDepBoard3D(st,deps){
     ctx.textAlign='right'; ctx.fillStyle=dp.cancelled?'#ff5fa2':'#eaffff';
     ctx.font='bold 96px "Courier New",monospace';
     ctx.fillText(dp.cancelled?'FÄLLT AUS':dp.mins+' MIN',W-70,y+125);
+    ctx.textAlign='right';
+    if(dp.delay>0&&!dp.cancelled){ ctx.fillStyle='#ff5fa2'; ctx.font='72px "Courier New",monospace'; ctx.fillText('+'+dp.delay+' MIN',W-70,y+190); }
     ctx.textAlign='left';
-    if(dp.delay>0&&!dp.cancelled){ ctx.fillStyle='#ff5fa2'; ctx.font='72px "Courier New",monospace'; ctx.fillText('+'+dp.delay,W-70,y+190); }
     ctx.strokeStyle='rgba(45,212,238,0.18)'; ctx.lineWidth=4;
     ctx.beginPath(); ctx.moveTo(48,y+LH-8); ctx.lineTo(W-48,y+LH-8); ctx.stroke();
   });
