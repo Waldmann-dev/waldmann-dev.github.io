@@ -1697,6 +1697,7 @@ STATIONS.forEach(st=>{
 });
 function __createBadgesDeferred(){
   if(typeof makeLineBadges!=='function') return;
+  let created=0;
   STATIONS.forEach(st=>{
     if(!st._badgeLines||!st._badgeLines.length||st._badges) return;
     if(st.x===undefined) return;
@@ -1704,12 +1705,17 @@ function __createBadgesDeferred(){
       const badge=makeLineBadges(st._badgeLines);
       if(badge){
         const yB=st.u?-SUB_DEPTH:terrainY(st.x,st.z);
-        badge.position.set(st.x,yB+130,st.z);
+        // Größer und höher positioniert für Sichtbarkeit
+        badge.scale.multiplyScalar(1.5);
+        badge.position.set(st.x,yB+180,st.z);
+        badge.renderOrder=999;
         infolabels.add(badge);
         st._badges=badge;
+        created++;
       }
-    }catch(e){}
+    }catch(e){ console.warn('Badge-Fehler:', st.n, e); }
   });
+  console.log('Badges erstellt:', created);
 }
 // Stations-Seitenleiste (extra Panel, nicht im Hamburger-Menü)
 let __hlSt=null, __hlT0=0;
@@ -1750,6 +1756,14 @@ function __gotoStationPanel(st){ __gotoStation(st); openStationPanel(st); }
     b.onclick=()=>__gotoStationPanel(st);
     st._btnS=b;
     if(list) list.appendChild(b);
+  });
+  // Collapsible Klickmenü: Header aufklappen/zuklappen
+  document.querySelectorAll('.collapsible').forEach(h=>{
+    h.style.cursor='pointer';
+    h.onclick=()=>{
+      const t=document.getElementById(h.getAttribute('data-target'));
+      if(t){ t.style.display=(t.style.display==='none'?'':'none'); }
+    };
   });
   // Mobile Bottom-Bar: Chips, erst U dann S (Tap = Flug + Highlight + Abfahrten)
   const bar=document.getElementById('stbar');
