@@ -651,7 +651,7 @@ if(false){
 
 // ---------- 3km Radius-Kreis um Hechtseestr. 72 ----------
 {
-  const cx=686, cz=-213, r=3000;
+  const cx=686, cz=-213, r=2700;
   const pts=[];
   for(let a=0;a<=64;a++){
     const ang=(a/64)*Math.PI*2;
@@ -2278,5 +2278,5 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{
 setTimeout(function(){ try{ __createBadgesDeferred(); }catch(e){ console.warn('Badge-Init:', e); } }, 3000);
 })();
 </script>
-<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v8.12</div></body>
+<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v8.13</div></body>
 </html>
