@@ -1494,43 +1494,44 @@ let __depBoard=null;
 function showDepBoard3D(st,deps){
   if(__depBoard){ scene.remove(__depBoard.mesh); __depBoard.mesh.material.map.dispose(); __depBoard.mesh.material.dispose(); __depBoard=null; }
   if(!deps||!deps.length) return;
-  // Hohe Auflösung: 1024px breit (2x für scharfe Schrift)
-  const n=Math.min(deps.length,6), W=1024, LH=108, H=168+n*LH;
+  // Sehr hohe Auflösung: 2048px für gestochen scharfe Schrift
+  const n=Math.min(deps.length,6), W=2048, LH=200, H=320+n*LH;
   const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
   const ctx=cv.getContext('2d');
   ctx.fillStyle='rgba(8,22,36,0.94)'; ctx.fillRect(0,0,W,H);
-  ctx.strokeStyle='#2dd4ee'; ctx.lineWidth=6; ctx.strokeRect(6,6,W-12,H-12);
-  ctx.font='bold 68px "Courier New",monospace'; ctx.fillStyle='#7df9ff'; ctx.textAlign='center';
+  ctx.strokeStyle='#2dd4ee'; ctx.lineWidth=10; ctx.strokeRect(10,10,W-20,H-20);
+  ctx.font='bold 120px "Courier New",monospace'; ctx.fillStyle='#7df9ff'; ctx.textAlign='center';
   let title=(st.u?'U ':'S ')+st.n; if(title.length>22) title=title.substring(0,21)+'…';
-  ctx.fillText(title,W/2,100);
+  ctx.fillText(title,W/2,180);
   ctx.textAlign='left';
   const list=deps.slice(0,n);
   list.forEach((dp,i)=>{
-    const y=168+i*LH;
-    ctx.font='bold 60px "Courier New",monospace'; ctx.fillStyle='#7df9ff';
-    ctx.fillText(dp.line,36,y+68);
-    ctx.font='52px "Courier New",monospace'; ctx.fillStyle='#bfefff';
+    const y=320+i*LH;
+    ctx.font='bold 110px "Courier New",monospace'; ctx.fillStyle='#7df9ff';
+    ctx.fillText(dp.line,70,y+125);
+    ctx.font='96px "Courier New",monospace'; ctx.fillStyle='#bfefff';
     let dest=dp.dest||''; if(dest.length>16) dest=dest.substring(0,15)+'…';
-    ctx.fillText(dest,220,y+68);
+    ctx.fillText(dest,420,y+125);
     ctx.textAlign='right'; ctx.fillStyle=dp.cancelled?'#ff5fa2':'#eaffff';
-    ctx.font='bold 52px "Courier New",monospace';
-    ctx.fillText(dp.cancelled?'FÄLLT AUS':dp.mins+' MIN',W-36,y+68);
+    ctx.font='bold 96px "Courier New",monospace';
+    ctx.fillText(dp.cancelled?'FÄLLT AUS':dp.mins+' MIN',W-70,y+125);
     ctx.textAlign='left';
-    if(dp.delay>0&&!dp.cancelled){ ctx.fillStyle='#ff5fa2'; ctx.font='40px "Courier New",monospace'; ctx.fillText('+'+dp.delay,W-36,y+104); }
-    ctx.strokeStyle='rgba(45,212,238,0.18)'; ctx.lineWidth=2;
-    ctx.beginPath(); ctx.moveTo(24,y+LH-4); ctx.lineTo(W-24,y+LH-4); ctx.stroke();
+    if(dp.delay>0&&!dp.cancelled){ ctx.fillStyle='#ff5fa2'; ctx.font='72px "Courier New",monospace'; ctx.fillText('+'+dp.delay,W-70,y+190); }
+    ctx.strokeStyle='rgba(45,212,238,0.18)'; ctx.lineWidth=4;
+    ctx.beginPath(); ctx.moveTo(48,y+LH-8); ctx.lineTo(W-48,y+LH-8); ctx.stroke();
   });
   const tex=new THREE.CanvasTexture(cv);
-  tex.anisotropy=4; // schärfer bei schrägem Blickwinkel
+  tex.anisotropy=8;
+  tex.minFilter=THREE.LinearFilter; tex.magFilter=THREE.LinearFilter;
   const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,fog:false}));
-  const sc=0.3; // gleiche Weltgröße wie vorher (307x245), aber 2x Auflösung
+  const sc=0.15; // gleiche Weltgröße (307x~245), aber 4x Auflösung
   sp.scale.set(W*sc,H*sc,1);
   const yBase=st.u?-SUB_DEPTH:terrainY(st.x,st.z);
-  // Seitlich versetzt (120m), damit Bahnen nicht drüberfahren; deutlich unter dem Stationsnamen
-  sp.position.set(st.x+120,yBase-40-(H*sc)/2,st.z);
+  // Mittig unter der Station, einen Tick tiefer (kein seitlicher Versatz mehr)
+  sp.position.set(st.x,yBase-60-(H*sc)/2,st.z);
   sp.renderOrder=998; sp.material.depthTest=false; sp.frustumCulled=false;
   scene.add(sp);
-  __depBoard={mesh:sp,st,deps:list,LH:LH*sc,H:H*sc,W:W*sc,topPad:168*sc,scale:sc};
+  __depBoard={mesh:sp,st,deps:list,LH:LH*sc,H:H*sc,W:W*sc,topPad:320*sc,scale:sc};
 }
 function openStationPanel(st){
   if(__depBoard){ scene.remove(__depBoard.mesh); __depBoard=null; }
@@ -1632,9 +1633,8 @@ function jumpToTrain(st,dp){
         __followTrain=singleMeshFromParts(ubahnGeo(),0.98);
         __followTrain.scale.set(2.2,2.2,2.2);
         scene.add(__followTrain);
-        // Kamera nah ranzoomen
+        // Kamera NICHT zwangspositionieren (Disis Wunsch): nur Target setzen, Zoom bleibt beim Nutzer
         const p0=__posOnLine(line,sPos);
-        camera.position.set(p0.x+140,yB+170,p0.z+190);
         controls.target.set(p0.x,yB+10,p0.z);
         return;
       }
@@ -1648,7 +1648,6 @@ function jumpToTrain(st,dp){
   });
   if(!best||bd>800){ return; }
   __follow={st,dp,line:best,t:0};
-  camera.position.set(st.x+400,yB+500,st.z+600);
   controls.target.set(st.x,yB+40,st.z);
 }
 function __posOnLine(line,s){
