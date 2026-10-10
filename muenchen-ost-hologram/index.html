@@ -447,7 +447,7 @@ const underGroup=new THREE.Group(); underGroup.visible=true; scene.add(underGrou
 const SUB_DEPTH=14; // echte Tiefe Muenchner U-Bahn (ca. 10-20 m, hier ca. -14 m)
 
 const camera = new THREE.PerspectiveCamera(55, innerWidth/innerHeight, 5, 60000);
-const CAM_HOME = new THREE.Vector3(PCX, 2500, PCZ+4300);
+const CAM_HOME = new THREE.Vector3(686, 2500, -213+4300); // Hechtseestr. 72
 camera.position.copy(CAM_HOME);
 
 const renderer = new THREE.WebGLRenderer({antialias:true});
@@ -456,7 +456,7 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 document.getElementById('app').appendChild(renderer.domElement);
 
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
-controls.target.set(PCX, 0, PCZ);
+controls.target.set(686, 0, -213); // Hechtseestr. 72
 controls.enableDamping = true; controls.dampingFactor = 0.06;
 controls.autoRotate = true; controls.autoRotateSpeed = 0.5;
 controls.maxPolarAngle = Math.PI*0.495;
@@ -2262,5 +2262,5 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{
 setTimeout(function(){ try{ __createBadgesDeferred(); }catch(e){ console.warn('Badge-Init:', e); } }, 3000);
 })();
 </script>
-<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v8.09</div></body>
+<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v8.10</div></body>
 </html>
