@@ -1085,13 +1085,15 @@ let __focusOn=false;
 const __btnFocus=document.getElementById('btn-focus');
 function __setFocus(on){
   __focusOn=on;
+  setSub(on); // Bahn-Fokus beinhaltet den U-Bahn-Modus (Tunnel sichtbar, Kamera auf -14 m)
   surfaceGroup.traverse(o=>{
     if(!o.material) return;
     const m=o.material;
-    if(m.userData.__foc===undefined){ m.userData.__foc=m.opacity; }
     let p=o, keep=false;
     while(p){ if(p===trafficGroup||p===underGroup||p===beamers||p===infolabels){keep=true;break;} p=p.parent; }
-    if(!keep){ m.transparent=true; m.opacity=on?0.3:m.userData.__foc; }
+    m.transparent=true;
+    if(on){ m.opacity=keep?(m.userData._op!==undefined?m.userData._op:1):0.2; }
+    else if(m.userData._op!==undefined){ m.opacity=m.userData._op; }
   });
   if(__btnFocus){ __btnFocus.innerHTML='BAHN-FOKUS: '+(on?'AN':'AUS'); __btnFocus.classList.toggle('off',!on); }
 }
