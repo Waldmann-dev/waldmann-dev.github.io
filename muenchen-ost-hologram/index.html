@@ -919,7 +919,7 @@ Object.keys(GREEN_STYLE).forEach(k=>{
   const st=GREEN_STYLE[k];
   addPolys(DATA.greens.filter(g=>g[1]===k).map(g=>g[0]),1.2,st.fill,st.fo,st.edge,st.eo);
 });
-addPolys(DATA.water_poly, 1.6, 0x1e6fd9, 0.90, 0x7dc4ff, 0.85);
+addPolys(DATA.water_poly, 2.2, 0x2fc4ff, 1.0, 0x9beaff, 0.95);
 if(DATA.water_line&&DATA.water_line.length)surfaceGroup.add(new THREE.Mesh(mergeTris(DATA.water_line.map(l=>ribbonT(l,4,1.6,0x1e6fd9))),
   new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:0.9,depthWrite:false})));
 addPolys(DATA.pools, 1.6, 0x1e6fd9, 0.92, 0x9beaff, 0.9);
@@ -2326,5 +2326,5 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{
 setTimeout(function(){ try{ __createBadgesDeferred(); }catch(e){ console.warn('Badge-Init:', e); } }, 3000);
 })();
 </script>
-<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v8.33</div></body>
+<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v8.34</div></body>
 </html>
