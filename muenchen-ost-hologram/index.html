@@ -87,6 +87,8 @@
       scroll-snap-align:start;cursor:pointer;font-family:inherit;letter-spacing:1px;
       color:#c9f6ff;font-weight:bold;}
     #stbar button.s{color:#ffd21f;}
+    #stbar button.active{background:#0e4a66;border-color:#7df9ff;color:#fff;
+      box-shadow:0 0 18px rgba(125,249,255,.9);text-shadow:0 0 8px #7df9ff;}
     #title h1{font-size:14px;letter-spacing:2px;}
     #title p{font-size:9px;letter-spacing:1px;}
     #title .stats{display:none;}
@@ -1413,6 +1415,7 @@ function __gotoStationPanel(st){ __gotoStation(st); openStationPanel(st); }
     b.textContent=(st.u?'U ':'S ')+st.n;
     b.style.color=st.u?'#9beaff':'#ffd21f';
     b.onclick=()=>__gotoStationPanel(st);
+    st._btnS=b;
     (st.u?lu:ls).appendChild(b);
   });
   // Mobile Bottom-Bar: Chips, erst U dann S (Tap = Flug + Highlight + Abfahrten)
@@ -1423,6 +1426,7 @@ function __gotoStationPanel(st){ __gotoStation(st); openStationPanel(st); }
       c.textContent=(st.u?'U ':'S ')+st.n;
       if(!st.u)c.className='s';
       c.onclick=()=>__gotoStationPanel(st);
+      st._btn=c;
       bar.appendChild(c);
     });
   }
@@ -1533,10 +1537,26 @@ function showDepBoard3D(st,deps){
   scene.add(sp);
   __depBoard={mesh:sp,st,deps:list,LH:LH*sc,H:H*sc,W:W*sc,topPad:320*sc,scale:sc};
 }
+function __updateStButtons(){
+  STATIONS.forEach(s=>{
+    const active=__depBoard&&__depBoard.st===s;
+    if(s._btn) s._btn.classList.toggle('active',active);
+    if(s._btnS){ s._btnS.style.background=active?'rgba(125,249,255,.25)':''; s._btnS.style.boxShadow=active?'0 0 12px rgba(125,249,255,.8)':''; }
+  });
+}
 function openStationPanel(st){
+  // Toggle: gleiche Station nochmal klicken = abwählen (Default-Zoom)
+  if(__depBoard&&__depBoard.st===st){
+    __clearHl(st);
+    scene.remove(__depBoard.mesh); __depBoard=null;
+    camera.position.copy(CAM_HOME); controls.target.set(PCX,0,PCZ);
+    __updateStButtons();
+    return;
+  }
   if(__depBoard){ __clearHl(__depBoard.st); scene.remove(__depBoard.mesh); __depBoard=null; }
-  fetchDeps(st).then(res=>{ showDepBoard3D(st,res.deps); });
+  fetchDeps(st).then(res=>{ showDepBoard3D(st,res.deps); __updateStButtons(); });
   __setHl(st);
+  __updateStButtons();
 }
 renderer.domElement.addEventListener('click',e=>{
   __mouse.x=(e.clientX/innerWidth)*2-1; __mouse.y=-(e.clientY/innerHeight)*2+1;
@@ -1557,7 +1577,7 @@ renderer.domElement.addEventListener('click',e=>{
   }
   const hits=__ray.intersectObjects(stationMarkers);
   if(hits.length){ const st=hits[0].object.userData.station; openStationPanel(st); }
-  else if(__depBoard){ __clearHl(__depBoard.st); scene.remove(__depBoard.mesh); __depBoard=null; }
+  else if(__depBoard){ __clearHl(__depBoard.st); scene.remove(__depBoard.mesh); __depBoard=null; __updateStButtons(); }
 });
 let __follow=null;
 const __followBar=document.createElement('div'); __followBar.id='follow-bar';
