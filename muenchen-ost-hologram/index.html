@@ -1705,10 +1705,10 @@ STATIONS.forEach(st=>{
         badge.position.set(st.x,yBadge,st.z);
         badge.renderOrder=999;
         badge.material.depthTest=false;
-        scene.add(badge);
+        infolabels.add(badge);
         st._badges=badge;
       }
-    }catch(e){}
+    }catch(e){ console.warn('Badge:', e); }
   }
 });
 function __createBadgesDeferred(){
