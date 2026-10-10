@@ -442,6 +442,35 @@ POLY.forEach(p=>{PCX+=p[0];PCZ+=p[1];}); PCX/=POLY.length; PCZ/=POLY.length;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x04060d);
 scene.fog = new THREE.FogExp2(0x04060d, 0.00010);
+
+// ---------- TAG/NACHT-MODUS (Sonnenauf-/untergang München) ----------
+let __dayMode = false;
+function __updateDayNight(){
+  const h = new Date().getHours() + new Date().getMinutes()/60;
+  // München Oktober: Sonnenaufgang ~7:45, Untergang ~18:30
+  // Tag: 8-18, Nacht: sonst, Dämmerung: 7-8 und 18-19
+  const isDay = h >= 8 && h < 18;
+  const isDawn = (h >= 7 && h < 8) || (h >= 18 && h < 19);
+  
+  if(isDay !== __dayMode){
+    __dayMode = isDay;
+    if(__dayMode){
+      // TAG: Heller Blaupausen-Stil
+      scene.background = new THREE.Color(0x0a1628);
+      scene.fog = new THREE.FogExp2(0x0a1628, 0.00008);
+      document.body.style.setProperty('--hud-accent', '#2f9dff');
+    } else {
+      // NACHT: Dunkler Neon-Look (Standard)
+      scene.background = new THREE.Color(0x04060d);
+      scene.fog = new THREE.FogExp2(0x04060d, 0.00010);
+      document.body.style.setProperty('--hud-accent', '#46f6ff');
+    }
+    console.log('Modus:', __dayMode ? 'TAG' : 'NACHT');
+  }
+}
+__updateDayNight();
+setInterval(__updateDayNight, 60000); // Jede Minute prüfen
+
 const surfaceGroup=new THREE.Group(); scene.add(surfaceGroup);
 const underGroup=new THREE.Group(); underGroup.visible=true; scene.add(underGroup); // U-Bahn-Ebene fest integriert (Roentgen-Blick)
 const SUB_DEPTH=14; // echte Tiefe Muenchner U-Bahn (ca. 10-20 m, hier ca. -14 m)
@@ -1101,6 +1130,90 @@ let pGeo, pSpeed;
   surfaceGroup.add(new THREE.Points(pGeo,new THREE.PointsMaterial({color:0x66d9ff,size:3.2,
     transparent:true,opacity:0.55,blending:THREE.AdditiveBlending,depthWrite:false,fog:false})));
 })();
+
+// ---------- WETTER-OVERLAY (Regen/Schnee) ----------
+let __weatherParticles = null;
+function __updateWeatherOverlay(condition){
+  // Entferne alte
+  if(__weatherParticles){
+    surfaceGroup.remove(__weatherParticles);
+    __weatherParticles = null;
+  }
+  if(!condition) return;
+  
+  const isRain = /regen|rain|drizzle/i.test(condition);
+  const isSnow = /schnee|snow|hagelschauer/i.test(condition);
+  if(!isRain && !isSnow) return;
+  
+  const N = isRain ? 800 : 600;
+  const pos = new Float32Array(N*3);
+  const col = isRain ? new THREE.Color(0x6bb8ff) : new THREE.Color(0xffffff);
+  for(let i=0;i<N;i++){
+    pos[i*3] = 686 + (Math.random()-0.5)*5000;
+    pos[i*3+1] = Math.random()*1500;
+    pos[i*3+2] = -213 + (Math.random()-0.5)*5000;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  __weatherParticles = new THREE.Points(geo, new THREE.PointsMaterial({
+    color: col, size: isRain ? 4 : 6, transparent: true, opacity: 0.7,
+    blending: THREE.AdditiveBlending, depthWrite: false, fog: false
+  }));
+  __weatherParticles.userData.isRain = isRain;
+  surfaceGroup.add(__weatherParticles);
+  console.log('Wetter-Overlay:', isRain ? 'Regen' : 'Schnee');
+}
+// Wird vom Wetter-Widget aufgerufen (Hook in Wetter-Update-Funktion)
+window.__setWeatherOverlay = __updateWeatherOverlay;
+
+
+// ---------- ROUTEN-ANIMATION beim Stationsklick ----------
+let __routeAnim = null;
+function __animateRoute(fromX, fromZ, toX, toZ){
+  // Entferne alte
+  if(__routeAnim){
+    surfaceGroup.remove(__routeAnim);
+    __routeAnim = null;
+  }
+  const pts = [];
+  const steps = 50;
+  for(let i=0;i<=steps;i++){
+    const t = i/steps;
+    // Leicht gekrümmte Route (Bezier-ähnlich)
+    const mx = (fromX+toX)/2, mz = (fromZ+toZ)/2 - 200;
+    const x = (1-t)*(1-t)*fromX + 2*(1-t)*t*mx + t*t*toX;
+    const z = (1-t)*(1-t)*fromZ + 2*(1-t)*t*mz + t*t*toZ;
+    pts.push(new THREE.Vector3(x, 30, z));
+  }
+  const geo = new THREE.BufferGeometry().setFromPoints(pts);
+  const mat = new THREE.LineBasicMaterial({ 
+    color: 0x2fff7a, transparent: true, opacity: 0.9, fog: false 
+  });
+  __routeAnim = new THREE.Line(geo, mat);
+  surfaceGroup.add(__routeAnim);
+  
+  // Animiere das Zeichnen (Dash-Offset)
+  let progress = 0;
+  const totalLen = geo.attributes.position.count;
+  function drawStep(){
+    progress += 2;
+    if(progress >= totalLen){
+      // Bleibt 3 Sekunden, dann ausblenden
+      setTimeout(()=>{
+        if(__routeAnim){
+          surfaceGroup.remove(__routeAnim);
+          __routeAnim = null;
+        }
+      }, 3000);
+      return;
+    }
+    geo.setDrawRange(0, progress);
+    requestAnimationFrame(drawStep);
+  }
+  drawStep();
+}
+window.__animateRoute = __animateRoute;
+
 (function stars(){
   const N=900, pos=new Float32Array(N*3);
   for(let i=0;i<N;i++){
@@ -2326,5 +2439,5 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{
 setTimeout(function(){ try{ __createBadgesDeferred(); }catch(e){ console.warn('Badge-Init:', e); } }, 3000);
 })();
 </script>
-<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v8.36</div></body>
+<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v8.37</div></body>
 </html>
