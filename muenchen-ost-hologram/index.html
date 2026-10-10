@@ -1121,12 +1121,20 @@ function buildCars(){
   const slots=[0,0,0,0];
   carRoutes.forEach((r,i)=>{
     const f=liveFactors.get(i)??1;
-    const n=liveOn?1+Math.round((1-f)*5):1; // Stau -> deutlich mehr Autos (bis 6x)
+    // Stau-Logik (Disis Wunsch 10.10.2026): je voller, desto mehr Autos, desto langsamer
+    // f=1 (frei): 1 Auto, volle Geschwindigkeit
+    // f=0 (Stillstand): Straße komplett voll, Autos stehen
+    let n, speedF;
+    if(!liveOn){ n=1; speedF=1; }
+    else if(f>=0.7){ n=1+Math.round((1-f)*3); speedF=f; }
+    else if(f>=0.3){ n=3+Math.round((0.7-f)*10); speedF=f*0.5; }
+    else { n=10+Math.round((0.3-f)*20); speedF=0.02; } // Stau: voll + Stillstand
+    n=Math.min(n,18);
     for(let k=0;k<n;k++){
       const mesh=(i+k)%4, slot=slots[mesh]++;
       if(slot>=40) break;
       const bv=8+Math.random()*7;
-      cars.push({r,s:Math.random()*r.len,baseV:bv,v:liveOn?bv*Math.max(0.25,f):bv,f,dir:(i+k)%2?1:-1,
+      cars.push({r,s:Math.random()*r.len,baseV:bv,v:liveOn?bv*speedF:bv,f,dir:(i+k)%2?1:-1,
         off:((i+k)%2?2.4:-2.4),mesh,slot});
     }
   });
