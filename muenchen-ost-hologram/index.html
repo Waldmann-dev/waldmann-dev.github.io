@@ -81,10 +81,11 @@
       overflow-x:auto;-webkit-overflow-scrolling:touch;
       padding:10px;gap:8px;background:rgba(4,12,20,.9);
       border-top:1px solid #164e63;scroll-snap-type:x mandatory;pointer-events:auto;}
-    #stbar button{flex:0 0 auto;min-height:38px;padding:7px 13px;font-size:12px;
-      border-radius:19px;border:1px solid #164e63;background:rgba(10,25,40,.95);
+    #stbar button{flex:0 0 auto;min-height:32px;padding:5px 10px;font-size:11px;
+      border-radius:16px;border:1px solid #2dd4ee;background:rgba(14,42,66,.95);
+      box-shadow:0 0 8px rgba(45,212,238,.45);
       scroll-snap-align:start;cursor:pointer;font-family:inherit;letter-spacing:1px;
-      color:#9beaff;}
+      color:#c9f6ff;font-weight:bold;}
     #stbar button.s{color:#ffd21f;}
     #title h1{font-size:14px;letter-spacing:2px;}
     #title p{font-size:9px;letter-spacing:1px;}
@@ -189,6 +190,7 @@ const DATA = {"buildings":[[[[-1272.3,1138.5],[-1265.6,1168.3],[-1259.7,1167.0],
 // (a) Kurve suedwestl. Josephsburg (existiert real nicht) -> keine S-Bahn dort
 // (b) Phantom-Linie bei Bad-Schachener-Str.: langes Gleis durch Korridor x 150..1950, z -1250..600,
 //     aber kein S-Bahnhof in der Naehe (existiert real nicht)
+// (c) S4 nach Trudering hat falschen Abzweig zur Bad-Schachener-Str. -> Phantom-Teil trimmen
 DATA.rails = DATA.rails.filter(function(r){
   var a=r[0], b=r[r.length-1];
   function d(p,q){ return Math.hypot(p[0]-q[0],p[1]-q[1]); }
@@ -213,6 +215,32 @@ DATA.rails = DATA.rails.filter(function(r){
       }
       if(md>500) return false; // weit weg von jedem S-Bahnhof -> Phantom
     }
+  }
+  return true;
+});
+// (c) Trimme Phantom-Abzweig: S4-Gleise die bei Bad-Schachener-Str. (119,-403) starten/enden
+//     aber nach Trudering führen -> Punkte südlich von z=-800 entfernen
+DATA.rails = DATA.rails.map(function(r){
+  function d(p,q){ return Math.hypot(p[0]-q[0],p[1]-q[1]); }
+  var len=0;
+  for(var k=1;k<r.length;k++) len+=Math.hypot(r[k][0]-r[k-1][0],r[k][1]-r[k-1][1]);
+  if(len<1500) return r;
+  var nearBS=false, nearTrud=false;
+  for(var k=0;k<r.length;k+=2){
+    if(d(r[k],[119,-403])<150) nearBS=true;
+    if(d(r[k],[3156,-1061])<100) nearTrud=true;
+  }
+  if(!(nearBS&&nearTrud)) return r;
+  var s=0; while(s<r.length&&r[s][1]>-800) s++;
+  var e=r.length-1; while(e>s&&r[e][1]>-800) e--;
+  if(s>0||e<r.length-1) return r.slice(s,e+1);
+  return r;
+});
+// (d) Geisterstrecke am Innsbrucker Ring (-127,-463): dort gibt es real keine S-Bahn (nur U-Bahn).
+//     Alle Oberflächen-Gleise im Umkreis von 150m entfernen.
+DATA.rails = DATA.rails.filter(function(r){
+  for(var k=0;k<r.length;k+=2){
+    if(Math.hypot(r[k][0]-(-127),r[k][1]-(-463))<150) return false;
   }
   return true;
 });
@@ -302,6 +330,16 @@ function meshFromParts(parts,count,opacity){
   g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(pos),3));
   g.setAttribute('color',new THREE.BufferAttribute(new Float32Array(col),3));
   return new THREE.InstancedMesh(g,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:opacity===undefined?0.9:opacity,fog:false}),count);
+}
+function singleMeshFromParts(parts,opacity){
+  const pos=[],col=[];
+  parts.forEach(p=>{const a=p.pos,b=p.col;for(let i=0;i<a.length;i++){pos.push(a[i]);col.push(b[i]);}});
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(pos),3));
+  g.setAttribute('color',new THREE.BufferAttribute(new Float32Array(col),3));
+  const m=new THREE.Mesh(g,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:opacity||0.97,fog:false}));
+  m.material.depthTest=false; m.renderOrder=999; m.frustumCulled=false;
+  return m;
 }
 function carGeoLimo(){
   const P=[],B=0xdfe8f2,G=0x10222e,T=0x14181d;
@@ -766,15 +804,18 @@ await __pb(82,'MARKER WERDEN GESETZT');
 const labelGroup=new THREE.Group(); surfaceGroup.add(labelGroup);
 const beacons=[];
 function makeLabel(text, color){
-  const cv=document.createElement('canvas'); cv.width=512; cv.height=128;
+  const cv=document.createElement('canvas'); cv.width=768; cv.height=128;
   const ctx=cv.getContext('2d');
-  ctx.font='bold 54px "Courier New", monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  let fs=54;
+  ctx.font='bold '+fs+'px "Courier New", monospace';
+  while(ctx.measureText(text).width>700&&fs>24){ fs-=2; ctx.font='bold '+fs+'px "Courier New", monospace'; }
+  ctx.textAlign='center'; ctx.textBaseline='middle';
   ctx.shadowColor=color; ctx.shadowBlur=26; ctx.fillStyle='#eaffff';
-  ctx.fillText(text,256,60); ctx.fillText(text,256,60);
+  ctx.fillText(text,384,60); ctx.fillText(text,384,60);
   ctx.shadowBlur=0; ctx.fillStyle=color; ctx.font='bold 20px "Courier New", monospace';
   const tex=new THREE.CanvasTexture(cv);
   const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,fog:false}));
-  sp.scale.set(340,85,1);
+  sp.scale.set(510,85,1);
   return sp;
 }
 const BEACON_DEF={
@@ -932,10 +973,133 @@ function pickPolys(list,minLen,n){
     .filter(o=>o.len>=minLen).sort((a,b)=>b.len-a.len).slice(0,n);
 }
 const dummy=new THREE.Object3D();
-// Zuege: Muenchner S-Bahn-Look (BR 423: weiss, roter Streifen)
-const trainRoutes=pickPolys(DATA.rails,400,7);
-const trainMesh=meshFromParts(sbahnGeo(),Math.max(trainRoutes.length,1),0.92);
-const trains=trainRoutes.map((r,i)=>({r,s:Math.random()*r.len,v:20+Math.random()*8,dir:i%2?1:-1,i}));
+// === LIVE-BAHNEN (echt, aus MVG-Departures, nur im Kartengebiet) ===
+// Simulierte Geisterbahnen entfernt (Disis Wunsch 10.10.2026)
+const trainRoutes=pickPolys(DATA.rails,400,7); // für S-Bahn-Positionsberechnung
+let liveTrainMeshes=[];
+function clearLiveTrains(){
+  liveTrainMeshes.forEach(t=>{ scene.remove(t.mesh); if(t.lbl) scene.remove(t.lbl); if(t.arr) scene.remove(t.arr); });
+  liveTrainMeshes=[];
+}
+// U-Bahn-Linien-Sequenzen (für Positionsberechnung)
+const U_SEQ={
+  'U2':['Karl-Preis-Platz','Innsbrucker Ring','Josephsburg'],
+  'U5':['Ostbahnhof','Innsbrucker Ring','Michaelibad']
+};
+function getUStationPos(name){
+  const s=(DATA.subway_stations||[]).find(x=>x[2]===name);
+  return s?{x:s[0],z:s[1]}:null;
+}
+function getSStationPos(name){
+  const s=(DATA.s_stations||[]).find(x=>x[2]===name);
+  return s?{x:s[0],z:s[1]}:null;
+}
+// Finde nächsten Punkt auf einer Linie zu (x,z), gibt {s, x, z, dx, dz} zurück
+function nearestOnLine(line,x,z){
+  let best=null, bestD=1e18, bestS=0;
+  let s=0;
+  for(let i=0;i<line.pts.length-1;i++){
+    const a=line.pts[i], b=line.pts[i+1];
+    const dx=b.x-a.x, dz=b.z-a.z, len=Math.hypot(dx,dz);
+    if(len<0.01){ s+=len; continue; }
+    // Projektion von (x,z) auf Segment
+    const t=Math.max(0,Math.min(1,((x-a.x)*dx+(z-a.z)*dz)/(len*len)));
+    const px=a.x+dx*t, pz=a.z+dz*t;
+    const d=Math.hypot(x-px,z-pz);
+    if(d<bestD){ bestD=d; bestS=s+len*t; best={x:px,z:pz,dx:dx/len,dz:dz/len}; }
+    s+=len;
+  }
+  return best?{s:bestS,x:best.x,z:best.z,dx:best.dx,dz:best.dz,dist:bestD}:null;
+}
+async function refreshLiveTrains(){
+  clearLiveTrains();
+  const uStations=STATIONS.filter(s=>s.u);
+  const sStations=STATIONS.filter(s=>!s.u);
+  // Sammle Departures
+  const deps=[];
+  for(const st of [...uStations,...sStations]){
+    try{
+      const res=await fetchDeps(st);
+      res.deps.forEach(dp=>{
+        if(dp.cancelled||dp.mins>8) return; // nur relevante
+        const line=(dp.line||'').toUpperCase();
+        if(!line.match(/^[US]\d+$/)) return;
+        deps.push({st,dp,line});
+      });
+    }catch(e){}
+  }
+  // Erstelle Live-Bahnen (max 12)
+  let count=0;
+  for(const {st,dp,line} of deps){
+    if(count>=12) break;
+    const isU=line.startsWith('U');
+    let pos=null, dir=1, seq=null;
+    if(isU){
+      // U-Bahn: Position auf Tunnel
+      const seqNames=U_SEQ[line];
+      if(!seqNames) continue;
+      seq=seqNames;
+      const stIdx=seqNames.findIndex(n=>st.n.includes(n)||n.includes(st.n));
+      // Finde Tunnel-Linie
+      const uline=(DATA.subway_lines||[]).find(l=>{
+        // Prüfe ob Linie Stationen verbindet (vereinfacht: nächste Linie)
+        return true;
+      });
+      // Vereinfacht: Position = Station minus (mins * Geschwindigkeit) entlang der Sequenz
+      const sp=getUStationPos(st.n);
+      if(!sp) continue;
+      // Richtung: von vorheriger Station kommend
+      const prevName=seqNames[Math.max(0,stIdx-1)];
+      const prevP=getUStationPos(prevName);
+      if(!prevP) continue;
+      const dx=sp.x-prevP.x, dz=sp.z-prevP.z, len=Math.hypot(dx,dz)||1;
+      const dist=Math.min(dp.mins*60*13, len*0.9); // 13 m/s, max 90% der Strecke
+      pos={x:sp.x-dx/len*dist, z:sp.z-dz/len*dist, dx:dx/len, dz:dz/len};
+    }else{
+      // S-Bahn: Position auf nächstem Gleis
+      const sp=getSStationPos(st.n);
+      if(!sp) continue;
+      // Finde längstes Gleis in der Nähe
+      let bestRail=null, bestD=1e18;
+      (trainRoutes||[]).forEach(r=>{
+        r.pts.forEach(p=>{
+          const d=Math.hypot(p.x-sp.x,p.z-sp.z);
+          if(d<bestD){ bestD=d; bestRail=r; }
+        });
+      });
+      if(!bestRail||bestD>800) continue;
+      const near=nearestOnLine(bestRail,sp.x,sp.z);
+      if(!near) continue;
+      const dist=Math.min(dp.mins*60*15, 2000); // 15 m/s
+      pos={x:near.x-near.dx*dist, z:near.z-near.dz*dist, dx:near.dx, dz:near.dz};
+    }
+    if(!pos) continue;
+    // Nur im Kartengebiet zeigen
+    if(!__ptInPoly(pos.x,pos.z)) continue;
+    // Erstelle Zug-Modell
+    const mesh=singleMeshFromParts(isU?ubahnGeo():sbahnGeo(),0.96);
+    mesh.scale.set(1.8,1.8,1.8);
+    const yB=isU?-SUB_DEPTH:terrainY(pos.x,pos.z);
+    mesh.position.set(pos.x,yB+1.5,pos.z);
+    mesh.rotation.set(0,Math.atan2(-pos.dz,pos.dx),0);
+    scene.add(mesh);
+    // Label: Linienname (z.B. "S4", "U5")
+    const lbl=makeLabel(line, isU?'#9beaff':'#ffd21f');
+    lbl.scale.set(120,21,1);
+    lbl.position.set(pos.x,yB+55,pos.z);
+    scene.add(lbl);
+    // Ankunftsinfo: "Ankunft [Station] · X Min"
+    const arr=makeSmallLabel('Ankunft '+st.n+' · '+dp.mins+' Min', '#7df9ff');
+    arr.scale.set(160,30,1);
+    arr.position.set(pos.x,yB+32,pos.z);
+    scene.add(arr);
+    liveTrainMeshes.push({mesh,lbl,arr,st,dp,line,pos,isU});
+    count++;
+  }
+}
+// Alle 60s aktualisieren
+setInterval(refreshLiveTrains,60000);
+setTimeout(refreshLiveTrains,5000);
 // Autos: 3D-Hologramme (Limousine/SUV/Sport/Kompakt), beide Richtungen
 const carRoutes=pickPolys(DATA.streets.filter(s=>({motorway:1,trunk:1,primary:1,secondary:1,tertiary:1}[s[1]])).map(s=>s[0]),120,40);
 const carMeshes=[carGeoLimo,carGeoSUV,carGeoSport,carGeoKompakt].map(fn=>{
@@ -949,7 +1113,7 @@ function buildCars(){
   const slots=[0,0,0,0];
   carRoutes.forEach((r,i)=>{
     const f=liveFactors.get(i)??1;
-    const n=liveOn?1+Math.round((1-f)*3):1; // Stau -> mehr Autos
+    const n=liveOn?1+Math.round((1-f)*5):1; // Stau -> deutlich mehr Autos (bis 6x)
     for(let k=0;k<n;k++){
       const mesh=(i+k)%4, slot=slots[mesh]++;
       if(slot>=40) break;
@@ -961,6 +1125,13 @@ function buildCars(){
   carMeshes.forEach((m,mi)=>{ m.count=Math.max(slots[mi],1); });
 }
 buildCars();
+// LIVE standardmäßig AN (Disis Wunsch 10.10.2026)
+setTimeout(()=>{ if(!liveOn) setLive(true); },2000);
+// --- Fußgänger (klein, auf Wegen) ---
+// (Hinweis: peds/pedMesh werden weiter unten aus pedRoutes erstellt)
+function updatePeds(dt){
+  // Wird von updateTraffic() übernommen
+}
 function lonLat(x,z){ return [LON0+x/KX, LAT0-z/KZ]; }
 function tileXY(lon,lat,z){
   const n=Math.pow(2,z);
@@ -1038,11 +1209,7 @@ const subMesh=meshFromParts(ubahnGeo(),Math.max(subRoutes.length,1),0.95);
 subMesh.material.depthTest=false; subMesh.renderOrder=999; scene.add(subMesh); // U-Bahnen immer sichtbar (Roentgen-Blick), auch bei U-Bahn-Ebene AUS
 const subs=subRoutes.map((r,i)=>({r,s:Math.random()*r.len,v:16+Math.random()*6,dir:i%2?1:-1,i}));
 function updateTraffic(dt){
-  trains.forEach(t=>{t.s+=t.v*dt*t.dir;
-    const p=posOn(t.r.pts,t.r.cum,t.s);
-    dummy.position.set(p.x,terrainY(p.x,p.z)+1.2,p.z);
-    dummy.rotation.set(0,Math.atan2(-t.dir*p.dz,t.dir*p.dx),0);dummy.scale.set(1.3,1.3,1.3);dummy.updateMatrix();
-    trainMesh.setMatrixAt(t.i,dummy.matrix);});
+  // (Live-Bahnen werden separat via refreshLiveTrains() aktualisiert)
   cars.forEach(c=>{c.s+=c.v*dt*c.dir;
     const p=posOn(c.r.pts,c.r.cum,c.s);
     dummy.position.set(p.x+c.off*(-p.dz),terrainY(p.x,p.z)+2.1,p.z+c.off*(p.dx));
@@ -1053,7 +1220,6 @@ function updateTraffic(dt){
     const q=posOn(p.r.pts,p.r.cum,p.s);
     dummy.position.set(q.x,terrainY(q.x,q.z)+2.6,q.z);dummy.rotation.set(0,0,0);dummy.scale.set(2.5,2.5,2.5);dummy.updateMatrix();
     pedMesh.setMatrixAt(p.i,dummy.matrix);});
-  trainMesh.instanceMatrix.needsUpdate=true;
   carMeshes.forEach(m=>m.instanceMatrix.needsUpdate=true);
   pedMesh.instanceMatrix.needsUpdate=true;
   subs.forEach(u=>{u.s+=u.v*dt*u.dir;
@@ -1134,6 +1300,7 @@ function animate(){
   }
   pa.needsUpdate=true;
   if(trafficOn)updateTraffic(dt);
+  updatePeds(dt);
   controls.update();
   renderer.render(scene,camera);
 }
@@ -1191,21 +1358,21 @@ STATIONS.forEach(st=>{
   const bg=new THREE.CylinderGeometry(6,14,220,12,1,true);
   const bm=new THREE.Mesh(bg,new THREE.MeshBasicMaterial({color:st.u?0x35d5f2:0xf59e0b,
     transparent:true,opacity:0.16,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false}));
-  bm.position.set(st.x,yBase+110,st.z); bm.frustumCulled=false; beamers.add(bm);
+  bm.position.set(st.x,yBase+110,st.z); bm.frustumCulled=false; bm.visible=false; beamers.add(bm);
   const ring=new THREE.Mesh(new THREE.RingGeometry(10,16,32),
     new THREE.MeshBasicMaterial({color:st.u?0x35d5f2:0xf59e0b,transparent:true,opacity:0.7,
     blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false}));
-  ring.rotation.x=-Math.PI/2; ring.position.set(st.x,yBase+2,st.z); ring.frustumCulled=false; beamers.add(ring);
+  ring.rotation.x=-Math.PI/2; ring.position.set(st.x,yBase+2,st.z); ring.frustumCulled=false; ring.visible=false; beamers.add(ring);
   const hit=new THREE.Mesh(new THREE.SphereGeometry(45,8,8),
     new THREE.MeshBasicMaterial({visible:false}));
   hit.position.set(st.x,yBase+30,st.z); hit.userData.station=st;
   surfaceGroup.add(hit); stationMarkers.push(hit);
   const dot=new THREE.Mesh(new THREE.SphereGeometry(10,12,12),
     new THREE.MeshBasicMaterial({color:st.u?0x35d5f2:0xf59e0b,fog:false}));
-  dot.position.set(st.x,yBase+30,st.z); infolabels.add(dot);
+  dot.position.set(st.x,yBase+30,st.z); dot.visible=false; infolabels.add(dot);
   st._dot=dot; st._ring=ring; st._bm=bm;
   const lb=makeLabel((st.u?'U ':'S ')+st.n, st.u?'#9beaff':'#ffd21f');
-  lb.scale.set(200,50,1); lb.position.set(st.x,yBase+70,st.z); infolabels.add(lb);
+  lb.scale.set(300,50,1); lb.position.set(st.x,yBase+70,st.z); infolabels.add(lb);
   st._lb=lb;
 });
 // Stations-Seitenleiste (extra Panel, nicht im Hamburger-Menü)
@@ -1299,31 +1466,70 @@ async function fetchDeps(st){
     return {deps,offline:true};
   }
 }
-function openStationPanel(st){
-  document.getElementById('sp-title').textContent=(st.u?'U ':'S ')+st.n;
-  document.getElementById('sp-sub').textContent='LIVE-ABFAHRTEN WERDEN GELADEN…';
-  document.getElementById('sp-deps').innerHTML='';
-  __panel.classList.add('open');
-  fetchDeps(st).then(res=>{
-    document.getElementById('sp-sub').textContent=res.offline?'OFFLINE – FAHRPLAN (KEINE ECHTZEIT)':'LIVE · MVG';
-    const box=document.getElementById('sp-deps'); box.innerHTML='';
-    res.deps.forEach(dp=>{
-      const el=document.createElement('div'); el.className='dep';
-      el.innerHTML='<div class="line">'+dp.line+'</div><div class="dest">'+dp.dest+
-        (dp.platform?'<span style="color:#5b8fa3;font-size:9px;"> · GL '+dp.platform+'</span>':'')+'</div>'+
-        '<div class="time">'+(dp.cancelled?'<span style="color:#ff5fa2">FÄLLT AUS</span>':dp.mins+' MIN'+
-        (dp.delay>0?'<div class="delay">+'+dp.delay+' MIN</div>':''))+'</div>';
-      el.onclick=()=>jumpToTrain(st,dp);
-      box.appendChild(el);
-    });
-    if(!res.deps.length) box.innerHTML='<div style="color:#5b8fa3;font-size:11px">KEINE ABFAHRTEN</div>';
+let __depBoard=null;
+function showDepBoard3D(st,deps){
+  if(__depBoard){ scene.remove(__depBoard.mesh); __depBoard.mesh.material.map.dispose(); __depBoard.mesh.material.dispose(); __depBoard=null; }
+  if(!deps||!deps.length) return;
+  const n=Math.min(deps.length,6), W=512, LH=54, H=84+n*LH;
+  const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+  const ctx=cv.getContext('2d');
+  ctx.fillStyle='rgba(8,22,36,0.94)'; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='#2dd4ee'; ctx.lineWidth=3; ctx.strokeRect(3,3,W-6,H-6);
+  ctx.font='bold 34px "Courier New",monospace'; ctx.fillStyle='#7df9ff'; ctx.textAlign='center';
+  let title=(st.u?'U ':'S ')+st.n; if(title.length>22) title=title.substring(0,21)+'…';
+  ctx.fillText(title,W/2,50);
+  ctx.textAlign='left';
+  const list=deps.slice(0,n);
+  list.forEach((dp,i)=>{
+    const y=84+i*LH;
+    ctx.font='bold 30px "Courier New",monospace'; ctx.fillStyle='#7df9ff';
+    ctx.fillText(dp.line,18,y+34);
+    ctx.font='26px "Courier New",monospace'; ctx.fillStyle='#bfefff';
+    let dest=dp.dest||''; if(dest.length>16) dest=dest.substring(0,15)+'…';
+    ctx.fillText(dest,110,y+34);
+    ctx.textAlign='right'; ctx.fillStyle=dp.cancelled?'#ff5fa2':'#eaffff';
+    ctx.font='bold 26px "Courier New",monospace';
+    ctx.fillText(dp.cancelled?'FÄLLT AUS':dp.mins+' MIN',W-18,y+34);
+    ctx.textAlign='left';
+    if(dp.delay>0&&!dp.cancelled){ ctx.fillStyle='#ff5fa2'; ctx.font='20px "Courier New",monospace'; ctx.fillText('+'+dp.delay,W-18,y+52); }
+    ctx.strokeStyle='rgba(45,212,238,0.18)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(12,y+LH-2); ctx.lineTo(W-12,y+LH-2); ctx.stroke();
   });
+  const tex=new THREE.CanvasTexture(cv);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,fog:false}));
+  const sc=0.6;
+  sp.scale.set(W*sc,H*sc,1);
+  const yBase=st.u?-SUB_DEPTH:terrainY(st.x,st.z);
+  sp.position.set(st.x,yBase+45-(H*sc)/2,st.z);
+  sp.renderOrder=998; sp.material.depthTest=false; sp.frustumCulled=false;
+  scene.add(sp);
+  __depBoard={mesh:sp,st,deps:list,LH,H,W,topPad:84};
+}
+function openStationPanel(st){
+  if(__depBoard){ scene.remove(__depBoard.mesh); __depBoard=null; }
+  fetchDeps(st).then(res=>{ showDepBoard3D(st,res.deps); });
+  __hlSt=st; __hlT0=performance.now();
 }
 renderer.domElement.addEventListener('click',e=>{
   __mouse.x=(e.clientX/innerWidth)*2-1; __mouse.y=-(e.clientY/innerHeight)*2+1;
   __ray.setFromCamera(__mouse,camera);
+  // Zuerst 3D-Abfahrtstafel prüfen (Klick auf Abfahrt = Folgen)
+  if(__depBoard){
+    const bh=__ray.intersectObject(__depBoard.mesh);
+    if(bh.length&&bh[0].uv){
+      const canvasY=(1-bh[0].uv.y)*__depBoard.H;
+      if(canvasY>__depBoard.topPad){
+        const idx=Math.floor((canvasY-__depBoard.topPad)/__depBoard.LH);
+        if(idx>=0&&idx<__depBoard.deps.length){
+          jumpToTrain(__depBoard.st,__depBoard.deps[idx]);
+          return;
+        }
+      }
+    }
+  }
   const hits=__ray.intersectObjects(stationMarkers);
   if(hits.length){ const st=hits[0].object.userData.station; openStationPanel(st); __hlSt=st; __hlT0=performance.now(); }
+  else if(__depBoard){ scene.remove(__depBoard.mesh); __depBoard=null; }
 });
 let __follow=null;
 const __followBar=document.createElement('div'); __followBar.id='follow-bar';
@@ -1394,13 +1600,11 @@ function jumpToTrain(st,dp){
           new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.55,
           blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false}));
         __followBeam.frustumCulled=false; scene.add(__followBeam);
-        // Helles Zug-Modell an der Position
+        // Echte U-Bahn (C2-Look) an der Position, hell erleuchtet
         if(__followTrain) scene.remove(__followTrain);
-        __followTrain=new THREE.Mesh(new THREE.SphereGeometry(5,12,10),
-          new THREE.MeshBasicMaterial({color:0xeaf6ff,fog:false}));
-        __followTrain.scale.set(3.2,0.9,0.9);
-        __followTrain.material.depthTest=false; __followTrain.renderOrder=999;
-        __followTrain.frustumCulled=false; scene.add(__followTrain);
+        __followTrain=singleMeshFromParts(ubahnGeo(),0.98);
+        __followTrain.scale.set(2.2,2.2,2.2);
+        scene.add(__followTrain);
         // Kamera nah ranzoomen
         const p0=__posOnLine(line,sPos);
         camera.position.set(p0.x+140,yB+170,p0.z+190);
@@ -1440,35 +1644,71 @@ animate=function(){
   if(__hlSt){ // Station leuchtet nach Sprung pulsierend auf (Dot+Ring+Beam+Name)
     const k=(performance.now()-__hlT0)/3500;
     if(k>=1){
-      if(__hlSt._dot)__hlSt._dot.scale.set(1,1,1);
-      if(__hlSt._ring)__hlSt._ring.material.opacity=0.7;
-      if(__hlSt._bm){__hlSt._bm.scale.set(1,1,1);__hlSt._bm.material.opacity=0.16;}
-      if(__hlSt._lb)__hlSt._lb.scale.set(200,50,1);
+      if(__hlSt._dot){__hlSt._dot.scale.set(1,1,1);__hlSt._dot.visible=false;}
+      if(__hlSt._ring){__hlSt._ring.material.opacity=0.7;__hlSt._ring.visible=false;}
+      if(__hlSt._bm){__hlSt._bm.scale.set(1,1,1);__hlSt._bm.material.opacity=0.16;__hlSt._bm.visible=false;}
+      if(__hlSt._lb)__hlSt._lb.scale.set(300,50,1);
       __hlSt=null;
     }else{
       const w=Math.abs(Math.sin(k*Math.PI*3)), p=1+1.4*w;
-      if(__hlSt._dot)__hlSt._dot.scale.set(p,p,p);
-      if(__hlSt._ring)__hlSt._ring.material.opacity=Math.min(1,0.7+0.5*w);
-      if(__hlSt._bm){const bp=1+1.1*w;__hlSt._bm.scale.set(bp,1,bp);__hlSt._bm.material.opacity=Math.min(0.85,0.16+0.55*w);}
-      if(__hlSt._lb){const lp=1+0.6*w;__hlSt._lb.scale.set(200*lp,50*lp,1);}
+      if(__hlSt._dot){__hlSt._dot.visible=true;__hlSt._dot.scale.set(p,p,p);}
+      if(__hlSt._ring){__hlSt._ring.visible=true;__hlSt._ring.material.opacity=Math.min(1,0.7+0.5*w);}
+      if(__hlSt._bm){__hlSt._bm.visible=true;const bp=1+1.1*w;__hlSt._bm.scale.set(bp,1,bp);__hlSt._bm.material.opacity=Math.min(0.85,0.16+0.55*w);}
+      if(__hlSt._lb){const lp=1+0.6*w;__hlSt._lb.scale.set(300*lp,50*lp,1);}
     }
   }
   if(__follow){
     if(__follow.real){
       // Echte Verfolgung: Zug bewegt sich mit realer Geschwindigkeit auf der Tunnelgeometrie
+      const prevX=__follow.px, prevZ=__follow.pz;
       __follow.s+=__follow.dir*__follow.v*0.016;
       const p=__posOnLine(__follow.line,__follow.s);
       const yB=-SUB_DEPTH;
-      // Kamera folgt nah ranzoomt
-      const cx=p.x+140, cz=p.z+190;
-      camera.position.lerp(new THREE.Vector3(cx,yB+170,cz),0.06);
-      controls.target.lerp(new THREE.Vector3(p.x,yB+10,p.z),0.12);
+      if(prevX!==undefined){
+        // Delta-Folgen: Zentrum bewegt sich mit, Zoom/Rotation des Nutzers bleibt erhalten
+        const dx=p.x-prevX, dz=p.z-prevZ;
+        camera.position.x+=dx; camera.position.z+=dz;
+        controls.target.x+=dx; controls.target.y=yB+10; controls.target.z+=dz;
+      }else{
+        controls.target.set(p.x,yB+10,p.z);
+      }
+      __follow.px=p.x; __follow.pz=p.z;
       // Heller Beamer ueber dem Zug
       if(__followBeam){ __followBeam.position.set(p.x,yB+80,p.z); }
       if(__followTrain){
-        __followTrain.position.set(p.x,yB+2,p.z);
+        __followTrain.position.set(p.x,yB+1.0,p.z);
         __followTrain.rotation.set(0,Math.atan2(-__follow.dir*p.dz,__follow.dir*p.dx),0);
       }
+      // Ankunftsinfo aktualisieren (alle ~0.5s)
+      __follow.infoT=(__follow.infoT||0)+0.016;
+      if(__follow.infoT>0.5){
+        __follow.infoT=0;
+        const el=document.getElementById('follow-info');
+        if(el){
+          // Naechste Station in Fahrtrichtung finden
+          const seq=__follow.seq; let nextNm=__follow.st.n, bestD=1e18;
+          if(seq){
+            seq.forEach(nm=>{
+              const s=(DATA.subway_stations||[]).find(x=>x[2]===nm); if(!s) return;
+              const ap=__arcPos(__follow.line,s[0],s[1]);
+              const dd=(ap.s-__follow.s)*__follow.dir;
+              if(dd>0&&dd<bestD){bestD=dd;nextNm=nm;}
+            });
+          }
+          const mins=Math.max(0,Math.round(bestD/__follow.v/60));
+          el.textContent='Ankunft '+nextNm+' in '+mins+' Min';
+        }
+      }
+      // Auto-Rueckkehr: Zug verlaesst den Kartenbereich
+      if(!__ptInPoly(p.x,p.z)){
+        const ost=__follow.st;
+        __follow=null;
+        if(__followBeam){scene.remove(__followBeam);__followBeam=null;}
+        if(__followTrain){scene.remove(__followTrain);__followTrain=null;}
+        __followBar.classList.remove('open');
+        flyToStation(ost); __hlSt=ost; __hlT0=performance.now();
+      }
+    }else{
     }else{
       __follow.t+=0.016;
       const l=__follow.line, n=l.length;
