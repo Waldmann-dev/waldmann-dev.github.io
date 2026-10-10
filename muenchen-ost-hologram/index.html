@@ -1704,6 +1704,8 @@ const LINE_COLORS={
 '19':'#1E5AA8','21':'#1E5AA8'
 };
 STATIONS.forEach(st=>{
+  // Bereits gesetzte x/z (manuelle GPS-Korrektur) haben Vorrang
+  if(st.x!==undefined&&st.z!==undefined) return;
   let f=null;
   if(st.u){ f=(DATA.subway_stations||[]).find(s=>s[2]===st.n); }
   if(!f&&st.s){ f=(DATA.s_stations||[]).find(s=>s[2]===st.n); }
