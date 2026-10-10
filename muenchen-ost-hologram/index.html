@@ -539,8 +539,8 @@ const C = {
     rg.setAttribute('color', new THREE.BufferAttribute(new Float32Array(ring.col),3));
     surfaceGroup.add(new THREE.LineSegments(rg, new THREE.LineBasicMaterial({vertexColors:true, transparent:true, opacity:opacity, fog:false})));
   }
-  addRing(1.0, 0x46f6ff, 0.95, 3);
-  addRing(1.03, 0x1b6f86, 0.30, 3);
+  addRing(1.0, 0x46f6ff, 0.0, 3);
+  addRing(1.03, 0x1b6f86, 0.0, 3);
   // Grid, aufs Polygon geclippt (Sampling alle 25 m)
   const gp=[], gc=[]; const gc0=new THREE.Color(0x0e3a4d);
   function gridLine(x0,z0,x1,z1){
@@ -2262,5 +2262,5 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{
 setTimeout(function(){ try{ __createBadgesDeferred(); }catch(e){ console.warn('Badge-Init:', e); } }, 3000);
 })();
 </script>
-<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v8.10</div></body>
+<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v8.11</div></body>
 </html>
