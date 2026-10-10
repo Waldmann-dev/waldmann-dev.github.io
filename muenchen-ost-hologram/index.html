@@ -861,7 +861,7 @@ function makeLabel(text, color, lines){
   // Linien-Badges OBEN (fest integriert, v7.58-Stil)
   if(lines&&lines.length){
     try{
-      const LC={'U2':'#E30613','U5':'#8C6A2F','U7':'#8CC63F','U8':'#E30613','S1':'#00A651','S2':'#009FE3','S3':'#92278F','S4':'#E30613','S6':'#007A33','S7':'#A72828','S8':'#FFD200','19':'#1E5AA8','21':'#1E5AA8'};
+      const LC={'U2':'#E30613','U5':'#8C6A2F','U7':'#8CC63F','U8':'#E30613','S1':'#00A651','S2':'#009FE3','S3':'#92278F','S4':'#E30613','S6':'#007A33','S7':'#A72828','S8':'#FFD200','19':'#1E5AA8','21':'#1E5AA8','54':'#0A7B9B','139':'#0A7B9B','185':'#0A7B9B','192':'#0A7B9B','195':'#0A7B9B'};
       const n=lines.length, bw=90, bh=55, gap=8;
       const totalW=n*bw+(n-1)*gap;
       const startX=(768-totalW)/2;
@@ -1669,16 +1669,16 @@ if(__btnInfo){ __btnInfo.onclick=()=>{ infolabels.visible=!infolabels.visible;
 const STATIONS=[
   {n:'Karl-Preis-Platz', t:'U', id:'de:09162:1070', u:true, lines:['U2']},
   {n:'Innsbrucker Ring', t:'U', id:'de:09162:1060', u:true, lines:['U2','U5','U8']},
-  {n:'Michaelibad', t:'U', id:'de:09162:1050', u:true, lines:['U5','U7','U8']},
+  {n:'Michaelibad', t:'U', id:'de:09162:1050', u:true, lines:['U5','U7','U8','195']},
   {n:'Ostbahnhof', t:'U/S', id:'de:09162:5', u:true, s:true, lines:['U5','S1','S2','S3','S4','S6','S8','21']},
-  {n:'Josephsburg', t:'U', id:'de:09162:1220', u:true, lines:['U2']},
-  {n:'Giesing', t:'U/S', id:'de:09162:1110', u:true, s:true, lines:['U2','S3','S7']},
+  {n:'Josephsburg', t:'U', id:'de:09162:1220', u:true, lines:['U2','185']},
+  {n:'Giesing', t:'U/S', id:'de:09162:1110', u:true, s:true, lines:['U2','S3','S7','54']},
   {n:'St.-Martin-Straße', t:'S', id:'de:09162:1100', s:true, lines:['S3','S7']},
   {n:'Leuchtenbergring', t:'S', id:'de:09162:900', s:true, lines:['S2','S4','S6','S8']},
-  {n:'Berg am Laim', t:'S', id:'de:09162:910', s:true, lines:['S2','S4','S6','19']},
-  {n:'Trudering', t:'U/S', id:'de:09162:920', u:true, s:true, lines:['U2','S4','S6']},
-  {n:'Quiddestraße', t:'U', id:'de:09162:1040', u:true, lines:['U5','U7','U8']},
-  {n:'Neuperlach Zentrum', t:'U', id:'de:09162:1030', u:true, lines:['U5','U7','U8']},
+  {n:'Berg am Laim', t:'S', id:'de:09162:910', s:true, lines:['S2','S4','S6','19','185']},
+  {n:'Trudering', t:'U/S', id:'de:09162:920', u:true, s:true, lines:['U2','S4','S6','139','185','192']},
+  {n:'Quiddestraße', t:'U', id:'de:09162:1040', u:true, lines:['U5','U7','U8','139']},
+  {n:'Neuperlach Zentrum', t:'U', id:'de:09162:1030', u:true, lines:['U5','U7','U8','139','192']},
   // Tram 21 (Ostbahnhof → St.-Veit-Straße)
   {n:'Haidenauplatz', t:'Tram', tram:true, lines:['21'], x:-800, z:-1180},
   {n:'Ampfingstraße', t:'Tram', tram:true, lines:['21'], x:500, z:-1110},
@@ -1906,7 +1906,7 @@ function showDepBoard3D(st,deps){
   ctx.fillText(title,W/2,180);
   // Linien-Badges unter dem Titel
   if(st.lines&&st.lines.length){
-    const LC={'U2':'#E30613','U5':'#8C6A2F','U7':'#8CC63F','U8':'#E30613','S1':'#00A651','S2':'#009FE3','S3':'#92278F','S4':'#E30613','S6':'#007A33','S7':'#A72828','S8':'#FFD200','19':'#1E5AA8','21':'#1E5AA8'};
+    const LC={'U2':'#E30613','U5':'#8C6A2F','U7':'#8CC63F','U8':'#E30613','S1':'#00A651','S2':'#009FE3','S3':'#92278F','S4':'#E30613','S6':'#007A33','S7':'#A72828','S8':'#FFD200','19':'#1E5AA8','21':'#1E5AA8','54':'#0A7B9B','139':'#0A7B9B','185':'#0A7B9B','192':'#0A7B9B','195':'#0A7B9B'};
     const bw=180, bh=90, gap=15;
     const totalW=st.lines.length*bw+(st.lines.length-1)*gap;
     const startX=(W-totalW)/2;
