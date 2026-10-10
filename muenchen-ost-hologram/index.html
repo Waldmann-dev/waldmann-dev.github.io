@@ -719,8 +719,10 @@ await __pb(65,'SCHIENEN WERDEN VERLEGT');
   surfaceGroup.add(new THREE.LineSegments(g,new THREE.LineBasicMaterial({vertexColors:true,
     transparent:true,opacity:0.9,blending:THREE.AdditiveBlending,depthWrite:false,fog:false})));
 }
-// ---------- Tram-Linien: gelbe Oberflächen-Ribbons ----------
-{
+// ---------- Tram-Linien: DEAKTIVIERT (Geisterlinien durch Gebäude, 10.10.2026) ----------
+// Gelbe Ribbons entfernt - gerade Verbindungen zwischen Haltestellen schnitten durch Gebäude.
+// Tram-Fahrzeuge und Stationen bleiben aktiv, nur die falschen Linien sind weg.
+if(false){
   const tc=new THREE.Color(0xffe135);
   const tpos=[],tcol=[];
   (DATA.tram_lines||[]).forEach(l=>{
