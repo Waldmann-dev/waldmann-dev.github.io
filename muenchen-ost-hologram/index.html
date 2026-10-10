@@ -1274,28 +1274,52 @@ async function pollLiveSubs(){
     const ust=STATIONS.filter(s=>s.u&&s.x!==undefined);
     const all=await Promise.all(ust.map(async st=>{
       try{
-        const r=await fetch('https://www.mvg.de/api/bgw-pt/v3/departures?globalId='+encodeURIComponent(st.id)+'&limit=8&offsetInMinutes=0');
+        const r=await fetch('https://www.mvg.de/api/bgw-pt/v3/departures?globalId='+encodeURIComponent(st.id)+'&limit=10&offsetInMinutes=-3');
         if(!r.ok)throw 0;
         const j=await r.json();
         return {st,deps:Array.isArray(j)?j:(j.departures||[])};
       }catch(e){return {st,deps:[]};}
     }));
-    const now=Date.now(),cand=[];
+    const now=Date.now();
+    // tripCode: derselbe Zug an aufeinanderfolgenden Stationen -> Interpolation A->B
+    const trips=new Map();
     all.forEach(({st,deps})=>{
       deps.forEach(d=>{
         if(d.transportType!=='UBAHN'||d.cancelled)return;
         const line=U_LINES.find(l=>l.label===d.label);
         if(!line)return;
         const se=line.stations.find(s=>s.st===st);
-        if(!se)return;
-        let dir=0;
-        for(const [sub,dd] of (U_DIRMAP[d.label]||[])){if((d.destination||'').includes(sub)){dir=dd;break;}}
-        if(!dir)return;
-        const T=d.realtimeDepartureTime||d.plannedDepartureTime;
-        const dtSec=(T-now)/1000;
-        if(dtSec<-90||dtSec>1500)return;
-        cand.push({line,s:Math.max(0,Math.min(line.len,se.s-dir*dtSec*10)),dir});
+        if(!se||d.tripCode==null)return;
+        const T=(d.realtime&&d.realtimeDepartureTime)?d.realtimeDepartureTime:(d.plannedDepartureTime||0);
+        if(!T)return;
+        const key=d.label+'|'+d.tripCode;
+        if(!trips.has(key))trips.set(key,{line,obs:[]});
+        trips.get(key).obs.push({s:se.s,T,dest:d.destination||''});
       });
+    });
+    const cand=[];
+    trips.forEach(({line,obs})=>{
+      obs.sort((a,b)=>a.T-b.T);
+      let placed=false;
+      for(let i=0;i<obs.length-1;i++){
+        const A=obs[i],B=obs[i+1];
+        if(A.T<=now&&now<=B.T&&B.T>A.T){
+          const k=(now-A.T)/(B.T-A.T);
+          const s=A.s+(B.s-A.s)*k;
+          const dir=B.s>=A.s?1:-1;
+          cand.push({line,s:Math.max(0,Math.min(line.len,s)),dir});
+          placed=true;break;
+        }
+      }
+      if(!placed&&obs.length){
+        const o=obs.reduce((b,a)=>Math.abs(a.T-now)<Math.abs(b.T-now)?a:b);
+        let dir=0;
+        for(const sub_dd of (U_DIRMAP[line.label]||[])){if(o.dest.includes(sub_dd[0])){dir=sub_dd[1];break;}}
+        if(!dir)return;
+        const dtSec=(o.T-now)/1000;
+        if(dtSec<-180||dtSec>1500)return;
+        cand.push({line,s:Math.max(0,Math.min(line.len,o.s-dir*dtSec*10)),dir});
+      }
     });
     const out=[];
     U_LINES.forEach(L=>{
@@ -1534,13 +1558,28 @@ renderer.domElement.addEventListener('click',e=>{
   __mouse.x=(e.clientX/innerWidth)*2-1; __mouse.y=-(e.clientY/innerHeight)*2+1;
   __ray.setFromCamera(__mouse,camera);
   const hits=__ray.intersectObjects(stationMarkers);
-  if(hits.length){ const st=hits[0].object.userData.station; openStationPanel(st); __hlSt=st; __hlT0=performance.now(); }
+  if(hits.length){ const st=hits[0].object.userData.station; openStationPanel(st); __hlSt=st; __hlT0=performance.now(); return; }
+  // Klick auf U-Bahn -> Kamera springt hin + folgt
+  const th=__ray.intersectObject(subMesh);
+  if(th.length&&th[0].instanceId!==undefined){
+    const idx=th[0].instanceId;
+    const live=Date.now()<liveFreshUntil&&liveSubs.length;
+    const t=live?liveSubs[idx]:subs[idx];
+    if(t){
+      const L=t.line||t.r;
+      const p=posOn(L.pts,L.cum,Math.max(0,Math.min(L.len,t.s)));
+      __followU={L,s:t.s,dir:t.dir};
+      __followBar.classList.add('open');
+      camera.position.set(p.x+250,-SUB_DEPTH+350,p.z+350);
+      controls.target.set(p.x,-SUB_DEPTH+20,p.z);
+    }
+  }
 });
-let __follow=null;
+let __follow=null, __followU=null;
 const __followBar=document.createElement('div'); __followBar.id='follow-bar';
 __followBar.innerHTML='<button id="btn-unfollow">FOLGEN BEENDEN</button>';
 document.body.appendChild(__followBar);
-document.getElementById('btn-unfollow').onclick=()=>{ __follow=null; __followBar.classList.remove('open'); };
+document.getElementById('btn-unfollow').onclick=()=>{ __follow=null; __followU=null; __followBar.classList.remove('open'); };
 function jumpToTrain(st,dp){
   const lines=(DATA.subway_lines||[]).concat(DATA.rails||[]);
   let best=null,bd=1e18;
@@ -1581,6 +1620,12 @@ animate=function(){
     const x=l[i0][0]+(l[i1][0]-l[i0][0])*f, z=l[i0][1]+(l[i1][1]-l[i0][1])*f;
     const yB=__follow.st.u?-SUB_DEPTH:terrainY(x,z);
     controls.target.set(x,yB+30,z);
+  }
+  if(__followU){ // U-Bahn folgen (live oder simuliert)
+    __followU.s+=__followU.dir*10*0.016;
+    __followU.s=Math.max(0,Math.min(__followU.L.len,__followU.s));
+    const p=posOn(__followU.L.pts,__followU.L.cum,__followU.s);
+    controls.target.set(p.x,-SUB_DEPTH+20,p.z);
   }
 };
 window.__v7ready=function(){ underGroup.visible=true; };
