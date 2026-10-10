@@ -1060,7 +1060,9 @@ Object.keys(BEACON_DEF).forEach((name,idx)=>{
     beacons.push({mesh:ring,phase:idx*1.3+0.6,base:0.6,ring:true});
   }
   const label=makeLabel(name, typeof def.c==='string'?def.c:'#'+def.c.toString(16).padStart(6,'0'));
-  label.position.set(p[0], isPark?420:360, p[1]);
+  // Name über dem Beamer: Beamer-Oberkante + Abstand
+  const beamTop = def.beam!==null ? terrainY(p[0],p[1])+(isPark?140:300) : 0;
+  label.position.set(p[0], def.beam!==null ? beamTop+50 : (isPark?420:360), p[1]);
   label.userData.phase=idx*0.9;
   labelGroup.add(label); beacons.push({mesh:label,phase:idx*0.9,base:1,sprite:true});
 });
@@ -2439,5 +2441,5 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{
 setTimeout(function(){ try{ __createBadgesDeferred(); }catch(e){ console.warn('Badge-Init:', e); } }, 3000);
 })();
 </script>
-<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v8.37</div></body>
+<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v8.38</div></body>
 </html>
