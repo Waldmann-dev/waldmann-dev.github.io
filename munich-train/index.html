@@ -1104,6 +1104,27 @@ await __pb(88,'U-BAHN-TUNNEL WERDEN GEBOHRT');
   });
 }
 
+
+// ---------- U-Bahn Stationen als sichtbare Marker (v2.9) ----------
+{
+  const sg = new THREE.SphereGeometry(80, 8, 8);
+  const sm = new THREE.MeshBasicMaterial({color:0x0066B3, fog:false});
+  (DATA.subway_stations||[]).forEach(s => {
+    const m = new THREE.Mesh(sg, sm);
+    m.position.set(s[0], terrainY(s[0], s[1]) + 100, s[1]);
+    surfaceGroup.add(m);
+  });
+  // S-Bahn Stationen (grün)
+  const sg2 = new THREE.SphereGeometry(80, 8, 8);
+  const sm2 = new THREE.MeshBasicMaterial({color:0x00a651, fog:false});
+  (DATA.s_stations||[]).forEach(s => {
+    const m = new THREE.Mesh(sg2, sm2);
+    const sx = s[0], sz = s[1];
+    m.position.set(sx, terrainY(sx, sz) + 100, sz);
+    surfaceGroup.add(m);
+  });
+}
+
 // ---------- Scanline-Ringe ----------
 const scans=[];
 for(let i=0;i<3;i++){
