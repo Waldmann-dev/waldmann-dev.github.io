@@ -440,7 +440,15 @@ let PCX=0, PCZ=0;
 POLY.forEach(p=>{PCX+=p[0];PCZ+=p[1];}); PCX/=POLY.length; PCZ/=POLY.length;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x87CEEB);
+// ---------- TAG-NACHT-MODUS ----------
+const __hour = new Date().getHours();
+const __isDay = __hour >= 7 && __hour < 19;
+if(__isDay){
+  scene.background = new THREE.Color(0xffffff);  // Schönes helles Weiß tagsüber
+  scene.fog = null;
+} else {
+  scene.background = new THREE.Color(0x0a1628);  // Dunkelblau nachts
+}
 scene.fog = null;
 
 // ---------- TAG/NACHT-MODUS (Sonnenauf-/untergang München) ----------
@@ -456,12 +464,28 @@ function __updateDayNight(){
     __dayMode = isDay;
     if(__dayMode){
       // TAG: Heller Blaupausen-Stil
-      scene.background = new THREE.Color(0x87CEEB);
+      // ---------- TAG-NACHT-MODUS ----------
+const __hour = new Date().getHours();
+const __isDay = __hour >= 7 && __hour < 19;
+if(__isDay){
+  scene.background = new THREE.Color(0xffffff);  // Schönes helles Weiß tagsüber
+  scene.fog = null;
+} else {
+  scene.background = new THREE.Color(0x0a1628);  // Dunkelblau nachts
+}
       scene.fog = null;
       document.body.style.setProperty('--hud-accent', '#2f9dff');
     } else {
       // NACHT: Dunkler Neon-Look (Standard)
-      scene.background = new THREE.Color(0x87CEEB);
+      // ---------- TAG-NACHT-MODUS ----------
+const __hour = new Date().getHours();
+const __isDay = __hour >= 7 && __hour < 19;
+if(__isDay){
+  scene.background = new THREE.Color(0xffffff);  // Schönes helles Weiß tagsüber
+  scene.fog = null;
+} else {
+  scene.background = new THREE.Color(0x0a1628);  // Dunkelblau nachts
+}
       scene.fog = null;
       document.body.style.setProperty('--hud-accent', '#46f6ff');
     }
