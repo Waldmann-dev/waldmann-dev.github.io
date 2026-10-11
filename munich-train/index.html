@@ -809,7 +809,9 @@ window.__railMeshes=[];
   const __railBed=new THREE.Mesh(mergeTris(DATA.rails.map(r=>ribbonT(r,4.6,2.4,bedMat))),
     new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:0.92,fog:false}));
   __railBed.userData.isRail=true; surfaceGroup.add(__railBed);
-  const epos=[],ecol=[],oc=new THREE.Color(0xff9a1f);
+  const epos=[],ecol=[];
+  // MVV-Farben: S-Bahn grün (Hauptnetz)
+  const oc=new THREE.Color(0x00a651);
   DATA.rails.forEach(r=>{
     for(let i=0;i<r.length-1;i++){
       const ax=r[i][0],az=r[i][1],bx=r[i+1][0],bz=r[i+1][1];
@@ -2461,5 +2463,5 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{
 setTimeout(function(){ try{ __createBadgesDeferred(); }catch(e){ console.warn('Badge-Init:', e); } }, 3000);
 })();
 </script>
-<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v1.7</div></body>
+<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v1.8</div></body>
 </html>
