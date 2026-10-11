@@ -440,8 +440,19 @@ let PCX=0, PCZ=0;
 POLY.forEach(p=>{PCX+=p[0];PCZ+=p[1];}); PCX/=POLY.length; PCZ/=POLY.length;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x04060d);
-scene.fog = new THREE.FogExp2(0x04060d, 0.00010);
+scene.background = new THREE.Color(0x0e1e33);
+scene.fog = new THREE.FogExp2(0x0e1e33, 0.00008);
+
+// ---------- TAG-MODUS (hell) ----------
+(function(){
+  const h = new Date().getHours();
+  const isDay = h >= 7 && h < 19;
+  if(isDay){
+    scene.background = new THREE.Color(0x14304a);
+    scene.fog = new THREE.FogExp2(0x14304a, 0.00006);
+  }
+})();
+
 
 // ---------- TAG/NACHT-MODUS (Sonnenauf-/untergang München) ----------
 let __dayMode = false;
@@ -461,8 +472,19 @@ function __updateDayNight(){
       document.body.style.setProperty('--hud-accent', '#2f9dff');
     } else {
       // NACHT: Dunkler Neon-Look (Standard)
-      scene.background = new THREE.Color(0x04060d);
-      scene.fog = new THREE.FogExp2(0x04060d, 0.00010);
+      scene.background = new THREE.Color(0x0e1e33);
+      scene.fog = new THREE.FogExp2(0x0e1e33, 0.00008);
+
+// ---------- TAG-MODUS (hell) ----------
+(function(){
+  const h = new Date().getHours();
+  const isDay = h >= 7 && h < 19;
+  if(isDay){
+    scene.background = new THREE.Color(0x14304a);
+    scene.fog = new THREE.FogExp2(0x14304a, 0.00006);
+  }
+})();
+
       document.body.style.setProperty('--hud-accent', '#46f6ff');
     }
     console.log('Modus:', __dayMode ? 'TAG' : 'NACHT');
@@ -2439,5 +2461,5 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{
 setTimeout(function(){ try{ __createBadgesDeferred(); }catch(e){ console.warn('Badge-Init:', e); } }, 3000);
 })();
 </script>
-<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v1.6</div></body>
+<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v1.7</div></body>
 </html>
