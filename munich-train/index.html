@@ -1469,7 +1469,7 @@ async function fetchLiveTraffic(){
   const res=await Promise.all(PTS.map(async pt=>{
     try{
       const ctl=new AbortController(), to=setTimeout(()=>ctl.abort(),12000);
-      const r=await fetch('https://api.tomtom.com/traffic/services/4/flowSegmentData/absolute/10/json?point='+pt[0]+','+pt[1]+'&key='+TOMTOM_KEY,{signal:ctl.signal});
+      const r=await fetch(''+pt[0]+','+pt[1]+'&key='+TOMTOM_KEY,{signal:ctl.signal});
       clearTimeout(to);
       if(!r.ok) return null;
       const d=(await r.json()).flowSegmentData;
@@ -2444,5 +2444,5 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{
 setTimeout(function(){ try{ __createBadgesDeferred(); }catch(e){ console.warn('Badge-Init:', e); } }, 3000);
 })();
 </script>
-<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v3.1</div></body>
+<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v3.2</div></body>
 </html>
