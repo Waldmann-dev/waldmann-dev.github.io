@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MÜNCHEN OST // HOLOGRAMM</title>
+<title>MUNICH TRAIN // SCHIENENNETZ</title>
 <style>
   html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#04060d;
     font-family:"Courier New",ui-monospace,monospace;color:#bfefff;}
@@ -441,7 +441,7 @@ POLY.forEach(p=>{PCX+=p[0];PCZ+=p[1];}); PCX/=POLY.length; PCZ/=POLY.length;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87CEEB);
-scene.fog = new THREE.FogExp2(0x04060d, 0.00010);
+scene.fog = null;
 
 // ---------- TAG/NACHT-MODUS (Sonnenauf-/untergang München) ----------
 let __dayMode = false;
@@ -456,13 +456,13 @@ function __updateDayNight(){
     __dayMode = isDay;
     if(__dayMode){
       // TAG: Heller Blaupausen-Stil
-      scene.background = new THREE.Color(0x0a1628);
-      scene.fog = new THREE.FogExp2(0x0a1628, 0.00008);
+      scene.background = new THREE.Color(0x87CEEB);
+      scene.fog = null;
       document.body.style.setProperty('--hud-accent', '#2f9dff');
     } else {
       // NACHT: Dunkler Neon-Look (Standard)
       scene.background = new THREE.Color(0x87CEEB);
-      scene.fog = new THREE.FogExp2(0x04060d, 0.00010);
+      scene.fog = null;
       document.body.style.setProperty('--hud-accent', '#46f6ff');
     }
     console.log('Modus:', __dayMode ? 'TAG' : 'NACHT');
