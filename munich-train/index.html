@@ -485,7 +485,7 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 document.getElementById('app').appendChild(renderer.domElement);
 
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
-controls.target.set(686, 0, -213); // Hechtseestr. 72
+controls.target.set(-3341,terrainY(-3341,-2339)+30,-2339); // Hechtseestr. 72
 
 // ---------- Kompass: Zurück zum Mittelpunkt + Nord-Ausrichtung ----------
 (function(){
@@ -1131,7 +1131,7 @@ for(let i=0;i<3;i++){
   const r=new THREE.Mesh(new THREE.RingGeometry(0.97,1.0,128),
     new THREE.MeshBasicMaterial({color:0x35d5f2,transparent:true,opacity:0.4,
       blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false}));
-  r.rotation.x=-Math.PI/2; r.position.set(686,terrainY(686,-213)+3,-213); surfaceGroup.add(r); // Hechtseestr. 72
+  r.rotation.x=-Math.PI/2; r.position.set(-3341,terrainY(-3341,-2339)+3,-2339); surfaceGroup.add(r); // Hechtseestr. 72
   scans.push({mesh:r,off:i/3});
 }
 const DIAG=Math.hypot(X1-X0,ZS-ZN);
