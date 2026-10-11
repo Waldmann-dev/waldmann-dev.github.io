@@ -1107,6 +1107,18 @@ await __pb(88,'U-BAHN-TUNNEL WERDEN GEBOHRT');
   });
 }
 
+
+// ---------- U-Bahn Stationen als kleine Punkte auf den Gleisen (v3.3) ----------
+{
+  const dotGeo = new THREE.SphereGeometry(25, 6, 6);
+  const dotMat = new THREE.MeshBasicMaterial({color:0xffffff, fog:false});
+  (DATA.subway_stations||[]).forEach(s => {
+    const m = new THREE.Mesh(dotGeo, dotMat);
+    m.position.set(s[0], terrainY(s[0], s[1]) + 30, s[1]);
+    surfaceGroup.add(m);
+  });
+}
+
 // ---------- Scanline-Ringe ----------
 const scans=[];
 for(let i=0;i<3;i++){
@@ -2444,5 +2456,5 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{
 setTimeout(function(){ try{ __createBadgesDeferred(); }catch(e){ console.warn('Badge-Init:', e); } }, 3000);
 })();
 </script>
-<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v3.2</div></body>
+<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v3.3</div></body>
 </html>
