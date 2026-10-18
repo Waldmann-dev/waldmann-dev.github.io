@@ -1378,10 +1378,14 @@ function nearestOnLine(line,x,z){
  }
  function placeOnSeg(t){
    const seg=t.seg, n=seg.length;
-   const i0=Math.floor(t.pos*(n-1)), i1=Math.min(i0+1,n-1);
-   const x=seg[i0][0], z=seg[i0][1];
+   // Nutze interpolierte Position statt nur Startpunkt
+   const fp=t.pos*(n-1), i0=Math.floor(fp), frac=fp-i0, i1=Math.min(i0+1,n-1);
+   const x=seg[i0][0]+(seg[i1][0]-seg[i0][0])*frac;
+   const z=seg[i0][1]+(seg[i1][1]-seg[i0][1])*frac;
    if(!__ptInPoly(x,z)) return false;
-   t.mesh.position.set(x, terrainY(x,z)+3, z);
+   t.mesh.position.set(x, terrainY(x,z)+2.5, z);
+   const dx=seg[i1][0]-seg[i0][0], dz=seg[i1][1]-seg[i0][1];
+   if(Math.hypot(dx,dz)>1) t.mesh.rotation.y=Math.atan2(dx*t.dir,dz*t.dir);
    return true;
  }
  function placeTrain(t){
@@ -2125,8 +2129,8 @@ async function fetchDeps(st){
     __depCache[st.id]={t:now,d:{deps,offline:false}};
     return __depCache[st.id].d;
   }catch(e){
-    const lines=st.lines&&st.lines.length?st.lines:(st.u?['U1','U7']:['S1']);
-    const deps=lines.flatMap((ln,i)=>[{line:ln,dest:st.u?'Innenstadt':(st.tram?'St.-Veit-Straße':'Ostbahnhof'),mins:3+i*7,delay:0,type:st.tram?'TRAM':(st.u?'UBAHN':'SBAHN'),platform:'',cancelled:false}]).slice(0,4);
+    const lines=st.lines&&st.lines.length?st.lines:(st.u?['U1','U7']:(st.tram?['12','16','17','20','21']:['S1']));
+    const deps=lines.flatMap((ln,i)=>[{line:ln,dest:st.u?'Innenstadt':(st.tram?'Hauptbahnhof':'Ostbahnhof'),mins:3+i*7,delay:0,type:st.tram?'TRAM':(st.u?'UBAHN':'SBAHN'),platform:'',cancelled:false}]).slice(0,4);
     return {deps,offline:true};
   }
 }
@@ -2487,7 +2491,7 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{
 setTimeout(function(){ try{ __createBadgesDeferred(); }catch(e){ console.warn('Badge-Init:', e); } }, 3000);
 })();
 </script>
-<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v1.17</div>
+<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v1.18</div>
 <!-- Hbf-Hologramm Modal -->
 <div id="hbf-modal" style="display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,0.8);">
   <div style="position:absolute;top:2%;left:2%;right:2%;bottom:2%;background:#000;border:1px solid #46f6ff;">
