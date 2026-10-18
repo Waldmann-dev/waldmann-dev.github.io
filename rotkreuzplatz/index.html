@@ -495,14 +495,14 @@ controls.target.set(-6497, 0, -4096); // Rotkreuzplatz
   const comp = document.getElementById('compass');
   if(!comp) return;
   comp.style.cursor = 'pointer';
-  comp.title = 'Zurück zu Hechtseestr. 72 (Norden oben)';
+  comp.title = 'Zurück zu Rotkreuzplatz (Norden oben)';
   comp.addEventListener('click', ()=>{
     // Wenn eine Station ausgewählt ist (Bahnfokus), nichts tun
     if(typeof __focusOn !== 'undefined' && __focusOn) return;
     if(typeof __selStation !== 'undefined' && __selStation) return;
     
-    // Kamera zurück zu Hechtseestr. 72
-    const target = new THREE.Vector3(686, 0, -213);
+    // Kamera zurück zu Rotkreuzplatz
+    const target = new THREE.Vector3(-6497, 0, -4096);
     const camPos = new THREE.Vector3(686, 2500, -213 + 4300);
     
     // Animiere
@@ -729,9 +729,9 @@ if(false){
 
 
 
-// ---------- Hellblauer 2,5km Kreis um Hechtseestr. 72 ----------
+// ---------- Hellblauer 2,5km Kreis um Rotkreuzplatz ----------
 {
-  const cx=686, cz=-213, r=2600;
+  const cx=-6497, cz=-4096, r=2500;
   const pts=[];
   for(let a=0;a<=128;a++){
     const ang=(a/128)*Math.PI*2;
@@ -1125,7 +1125,7 @@ for(let i=0;i<3;i++){
   const r=new THREE.Mesh(new THREE.RingGeometry(0.97,1.0,128),
     new THREE.MeshBasicMaterial({color:0x35d5f2,transparent:true,opacity:0.4,
       blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false}));
-  r.rotation.x=-Math.PI/2; r.position.set(-6497,terrainY(-6497,-4096)+3,-4096); surfaceGroup.add(r); // Hechtseestr. 72
+  r.rotation.x=-Math.PI/2; r.position.set(-6497,terrainY(-6497,-4096)+3,-4096); surfaceGroup.add(r); // Rotkreuzplatz
   scans.push({mesh:r,off:i/3});
 }
 const DIAG=Math.hypot(X1-X0,ZS-ZN);
@@ -1301,7 +1301,7 @@ function clearLiveTrains(){
 // U-Bahn-Linien-Sequenzen (für Positionsberechnung)
 const U_SEQ={
   'U2':['Karl-Preis-Platz','Innsbrucker Ring','Josephsburg'],
-  'U5':['Ostbahnhof','Innsbrucker Ring','Michaelibad']
+  'U5':['Hauptbahnhof','Innsbrucker Ring','Michaelibad']
 };
 function getUStationPos(name){
   const s=(DATA.subway_stations||[]).find(x=>x[2]===name);
@@ -2084,7 +2084,7 @@ async function fetchDeps(st){
     return __depCache[st.id].d;
   }catch(e){
     const lines=st.lines&&st.lines.length?st.lines:(st.u?['U2','U5']:['S4','S6']);
-    const deps=lines.flatMap((ln,i)=>[{line:ln,dest:st.u?'Innenstadt':(st.tram?'St.-Veit-Straße':'Ostbahnhof'),mins:3+i*7,delay:0,type:st.tram?'TRAM':(st.u?'UBAHN':'SBAHN'),platform:'',cancelled:false}]).slice(0,4);
+    const deps=lines.flatMap((ln,i)=>[{line:ln,dest:st.u?'Innenstadt':(st.tram?'St.-Veit-Straße':'Hauptbahnhof'),mins:3+i*7,delay:0,type:st.tram?'TRAM':(st.u?'UBAHN':'SBAHN'),platform:'',cancelled:false}]).slice(0,4);
     return {deps,offline:true};
   }
 }
@@ -2241,7 +2241,7 @@ document.getElementById('btn-unfollow').onclick=()=>{ __follow=null; if(__follow
 // U-Bahn-Linien: Stationsreihenfolge West->Ost (fuer echte Positionsberechnung)
 const U_SEQ={
   'U2':['Karl-Preis-Platz','Innsbrucker Ring','Josephsburg'],
-  'U5':['Ostbahnhof','Innsbrucker Ring','Michaelibad']
+  'U5':['Hauptbahnhof','Innsbrucker Ring','Michaelibad']
 };
 function __uLineFor(label){
   // Finde die Tunnelgeometrie zur Linie (U2/U5) via Stationsnaehe
@@ -2445,5 +2445,5 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{
 setTimeout(function(){ try{ __createBadgesDeferred(); }catch(e){ console.warn('Badge-Init:', e); } }, 3000);
 })();
 </script>
-<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v1.0</div></body>
+<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v1.1</div></body>
 </html>
