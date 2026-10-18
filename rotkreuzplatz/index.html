@@ -1329,93 +1329,85 @@ function nearestOnLine(line,x,z){
   }
   return best?{s:bestS,x:best.x,z:best.z,dx:best.dx,dz:best.dz,dist:bestD}:null;
 }
-async function refreshLiveTrains(){ clearLiveTrains(); return; // DEAKTIVIERT v1.10
-  clearLiveTrains();
-  const uStations=STATIONS.filter(s=>s.u);
-  const sStations=STATIONS.filter(s=>!s.u);
-  // Sammle Departures
-  const deps=[];
-  for(const st of [...uStations,...sStations]){
-    try{
-      const res=await fetchDeps(st);
-      res.deps.forEach(dp=>{
-        if(dp.cancelled||dp.mins>8) return; // nur relevante
-        const line=(dp.line||'').toUpperCase();
-        if(!line.match(/^[US]\d+$/)) return;
-        deps.push({st,dp,line});
-      });
-    }catch(e){}
-  }
-  // Erstelle Live-Bahnen (max 12)
-  let count=0;
-  for(const {st,dp,line} of deps){
-    if(count>=12) break;
-    const isU=line.startsWith('U');
-    let pos=null, dir=1, seq=null;
-    if(isU){
-      // U-Bahn: Position auf Tunnel
-      const seqNames=U_SEQ[line];
-      if(!seqNames) continue;
-      seq=seqNames;
-      const stIdx=seqNames.findIndex(n=>st.n.includes(n)||n.includes(st.n));
-      // Finde Tunnel-Linie
-      const uline=(DATA.subway_lines||[]).find(l=>{
-        // Prüfe ob Linie Stationen verbindet (vereinfacht: nächste Linie)
-        return true;
-      });
-      // Vereinfacht: Position = Station minus (mins * Geschwindigkeit) entlang der Sequenz
-      const sp=getUStationPos(st.n);
-      if(!sp) continue;
-      // Richtung: von vorheriger Station kommend
-      const prevName=seqNames[Math.max(0,stIdx-1)];
-      const prevP=getUStationPos(prevName);
-      if(!prevP) continue;
-      const dx=sp.x-prevP.x, dz=sp.z-prevP.z, len=Math.hypot(dx,dz)||1;
-      const dist=Math.min(dp.mins*60*13, len*0.9); // 13 m/s, max 90% der Strecke
-      pos={x:sp.x-dx/len*dist, z:sp.z-dz/len*dist, dx:dx/len, dz:dz/len};
-    }else{
-      // S-Bahn: Position auf nächstem Gleis
-      const sp=getSStationPos(st.n);
-      if(!sp) continue;
-      // Finde längstes Gleis in der Nähe
-      let bestRail=null, bestD=1e18;
-      (trainRoutes||[]).forEach(r=>{
-        r.pts.forEach(p=>{
-          const d=Math.hypot(p.x-sp.x,p.z-sp.z);
-          if(d<bestD){ bestD=d; bestRail=r; }
-        });
-      });
-      if(!bestRail||bestD>800) continue;
-      const near=nearestOnLine(bestRail,sp.x,sp.z);
-      if(!near) continue;
-      const dist=Math.min(dp.mins*60*15, 2000); // 15 m/s
-      pos={x:near.x-near.dx*dist, z:near.z-near.dz*dist, dx:near.dx, dz:near.dz};
-    }
-    if(!pos) continue;
-    // Nur im Kartengebiet zeigen
-    if(!__ptInPoly(pos.x,pos.z)) continue;
-    // Erstelle Zug-Modell
-    const mesh=singleMeshFromParts(isU?ubahnGeo():sbahnGeo(),0.96);
-    mesh.scale.set(1.8,1.8,1.8);
-    const yB=isU?-SUB_DEPTH:terrainY(pos.x,pos.z);
-    mesh.position.set(pos.x,yB+1.5,pos.z);
-    mesh.rotation.set(0,Math.atan2(-pos.dz,pos.dx),0);
-    scene.add(mesh);
-    // Label: Linienname (z.B. "S4", "U5")
-    const lbl=makeLabel(line, isU?'#9beaff':'#ffd21f');
-    lbl.scale.set(120,21,1);
-    lbl.position.set(pos.x,yB+55,pos.z);
-    scene.add(lbl);
-    // Ankunftsinfo: "Ankunft [Station] · X Min"
-    const arr=makeSmallLabel('Ankunft '+st.n+' · '+dp.mins+' Min', '#7df9ff');
-    arr.scale.set(160,30,1);
-    arr.position.set(pos.x,yB+32,pos.z);
-    scene.add(arr);
-    liveTrainMeshes.push({mesh,lbl,arr,st,dp,line,pos,isU});
-    count++;
-  }
+async function refreshLiveTrains(){ clearLiveTrains(); initSimpleTrains(); return; // v1.12: Neues einfaches System
 }
-// Alle 60s aktualisieren
+ // ===== EINFACHES ZUG-SYSTEM v1.12 =====
+ let __simpleTrains=[];
+ function initSimpleTrains(){
+   clearSimpleTrains();
+   const defs=[
+     {data:DATA.rails||[], color:0x35d5f2, size:1.0, speed:22, count:6, y:6},   // U-Bahn (cyan)
+     {data:DATA.tram_rails||[], color:0xff5fa2, size:0.7, speed:14, count:8, y:4}, // Tram (pink)
+     {data:DATA.main_rails||[], color:0xffd21f, size:1.4, speed:30, count:5, y:7}, // Hauptbahn (gelb)
+   ];
+   defs.forEach(d=>{
+     if(!d.data.length) return;
+     for(let i=0;i<d.count;i++){
+       const seg=d.data[Math.floor(Math.random()*d.data.length)];
+       if(!seg||seg.length<2) continue;
+       const mesh=makeSimpleTrain(d.color, d.size);
+       const t={
+         mesh, seg,
+         pos:Math.random(), // 0..1 entlang des Segments
+         dir:Math.random()<0.5?1:-1,
+         speed:d.speed, y:d.y,
+       };
+       updateTrainPos(t);
+       scene.add(mesh);
+       __simpleTrains.push(t);
+     }
+   });
+   if(!__simpleTrainLoop) __simpleTrainLoop=setInterval(updateSimpleTrains, 50);
+ }
+ let __simpleTrainLoop=null;
+ function makeSimpleTrain(color, size){
+   const g=new THREE.Group();
+   const mat=new THREE.MeshBasicMaterial({color, fog:false});
+   // Lok/Wagen als Box
+   const body=new THREE.Mesh(new THREE.BoxGeometry(8*size, 4*size, 3*size), mat);
+   body.position.y=2*size;
+   g.add(body);
+   // Fenster-Linie
+   const win=new THREE.Mesh(new THREE.BoxGeometry(7.5*size, 1*size, 3.2*size),
+     new THREE.MeshBasicMaterial({color:0x9beaff, fog:false}));
+   win.position.y=2.8*size;
+   g.add(win);
+   return g;
+ }
+ function updateTrainPos(t){
+   const seg=t.seg, n=seg.length;
+   const fp=t.pos*(n-1), i0=Math.floor(fp), frac=fp-i0;
+   const i1=Math.min(i0+1, n-1);
+   const ax=seg[i0][0], az=seg[i0][1], bx=seg[i1][0], bz=seg[i1][1];
+   const x=ax+(bx-ax)*frac, z=az+(bz-az)*frac;
+   // Nur im RK-Gebiet zeigen (Sicherheits-Check)
+   if(!__ptInPoly(x,z)){ t.mesh.visible=false; return; }
+   t.mesh.visible=true;
+   t.mesh.position.set(x, terrainY(x,z)+t.y, z);
+   // Ausrichtung
+   const dx=bx-ax, dz=bz-az, len=Math.hypot(dx,dz)||1;
+   t.mesh.rotation.y=Math.atan2(dx*t.dir, dz*t.dir);
+ }
+ function updateSimpleTrains(){
+   __simpleTrains.forEach(t=>{
+     const segLen=t.seg.length;
+     // Geschwindigkeit in Segment-Einheiten
+     let segDist=0;
+     for(let i=0;i<segLen-1;i++){
+       segDist+=Math.hypot(t.seg[i+1][0]-t.seg[i][0], t.seg[i+1][1]-t.seg[i][1]);
+     }
+     const dt=0.05*t.speed/Math.max(segDist,1);
+     t.pos+=dt*t.dir;
+     if(t.pos>=1){ t.pos=1; t.dir=-1; }
+     if(t.pos<=0){ t.pos=0; t.dir=1; }
+     updateTrainPos(t);
+   });
+ }
+ function clearSimpleTrains(){
+   __simpleTrains.forEach(t=>{ scene.remove(t.mesh); });
+   __simpleTrains=[];
+ }
+ // ===== ENDE EINFACHES ZUG-SYSTEM =====
 setInterval(refreshLiveTrains,60000);
 setTimeout(refreshLiveTrains,5000);
 // Autos: 3D-Hologramme (Limousine/SUV/Sport/Kompakt), beide Richtungen
@@ -2481,7 +2473,7 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{
 setTimeout(function(){ try{ __createBadgesDeferred(); }catch(e){ console.warn('Badge-Init:', e); } }, 3000);
 })();
 </script>
-<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v1.11</div>
+<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v1.12</div>
 <!-- Hbf-Hologramm Modal -->
 <div id="hbf-modal" style="display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,0.8);">
   <div style="position:absolute;top:2%;left:2%;right:2%;bottom:2%;background:#000;border:1px solid #46f6ff;">
