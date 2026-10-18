@@ -1326,7 +1326,7 @@ function nearestOnLine(line,x,z){
   }
   return best?{s:bestS,x:best.x,z:best.z,dx:best.dx,dz:best.dz,dist:bestD}:null;
 }
-async function refreshLiveTrains(){
+async function refreshLiveTrains(){ clearLiveTrains(); return; // DEAKTIVIERT v1.10
   clearLiveTrains();
   const uStations=STATIONS.filter(s=>s.u);
   const sStations=STATIONS.filter(s=>!s.u);
@@ -2478,7 +2478,7 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{
 setTimeout(function(){ try{ __createBadgesDeferred(); }catch(e){ console.warn('Badge-Init:', e); } }, 3000);
 })();
 </script>
-<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v1.9</div>
+<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v1.10</div>
 <!-- Hbf-Hologramm Modal -->
 <div id="hbf-modal" style="display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,0.8);">
   <div style="position:absolute;top:2%;left:2%;right:2%;bottom:2%;background:#000;border:1px solid #46f6ff;">
