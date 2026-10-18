@@ -1300,10 +1300,7 @@ function clearLiveTrains(){
   liveTrainMeshes=[];
 }
 // U-Bahn-Linien-Sequenzen (für Positionsberechnung)
-const U_SEQ={
-  'U2':['Karl-Preis-Platz','Innsbrucker Ring','Josephsburg'],
-  'U5':['Ostbahnhof','Innsbrucker Ring','Michaelibad']
-};
+const U_SEQ={   'U1':['Gern','Rotkreuzplatz','Maillingerstraße','Stiglmaierplatz','Hauptbahnhof'],   'U7':['Gern','Rotkreuzplatz','Maillingerstraße','Stiglmaierplatz','Hauptbahnhof'] };
 function getUStationPos(name){
   const s=(DATA.subway_stations||[]).find(x=>x[2]===name);
   return s?{x:s[0],z:s[1]}:null;
@@ -2119,7 +2116,7 @@ async function fetchDeps(st){
     __depCache[st.id]={t:now,d:{deps,offline:false}};
     return __depCache[st.id].d;
   }catch(e){
-    const lines=st.lines&&st.lines.length?st.lines:(st.u?['U2','U5']:['S4','S6']);
+    const lines=st.lines&&st.lines.length?st.lines:(st.u?['U1','U7']:['S1']);
     const deps=lines.flatMap((ln,i)=>[{line:ln,dest:st.u?'Innenstadt':(st.tram?'St.-Veit-Straße':'Ostbahnhof'),mins:3+i*7,delay:0,type:st.tram?'TRAM':(st.u?'UBAHN':'SBAHN'),platform:'',cancelled:false}]).slice(0,4);
     return {deps,offline:true};
   }
