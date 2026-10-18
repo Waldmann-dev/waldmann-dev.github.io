@@ -1329,9 +1329,95 @@ function nearestOnLine(line,x,z){
   }
   return best?{s:bestS,x:best.x,z:best.z,dx:best.dx,dz:best.dz,dist:bestD}:null;
 }
-async function refreshLiveTrains(){ /* v1.15: deaktiviert */ }
+/* v1.15 alt entfernt */
  
  // Zug-System v1.15: KOMPLETT ENTFERNT
+ // ===== VERKEHR v1.16: Autos + U-Bahn/Tram (strikt RK-Gebiet) =====
+ let __vCars=[], __vTrains=[], __vLoop=null;
+ function initVerkehr(){
+   // AUTOS (20) auf Straßen
+   const streets=DATA.streets||[];
+   const carColors=[0xff2fd6,0x35d5f2,0xffd21f,0xffffff,0x9beaff];
+   for(let i=0;i<20 && streets.length;i++){
+     const seg=streets[Math.floor(Math.random()*streets.length)];
+     if(!seg||!seg[0]||seg[0].length<2) continue;
+     const car=new THREE.Mesh(new THREE.BoxGeometry(9,3.5,4.5),
+       new THREE.MeshBasicMaterial({color:carColors[i%carColors.length], fog:false}));
+     const t={mesh:car, seg:seg[0], pos:Math.random(), dir:Math.random()<0.5?1:-1, speed:15+Math.random()*10};
+     if(placeOnSeg(t)) { scene.add(car); __vCars.push(t); }
+   }
+   // U-BAHN (5, cyan) auf rails
+   const rails=DATA.rails||[];
+   for(let i=0;i<5 && rails.length;i++){
+     const seg=rails[Math.floor(Math.random()*rails.length)];
+     if(!seg||seg.length<2) continue;
+     const train=makeVZug(0x35d5f2, 1.0);
+     const t={mesh:train, seg, pos:Math.random(), dir:1, speed:25, y:6};
+     if(placeTrain(t)) { scene.add(train); __vTrains.push(t); }
+   }
+   // TRAM (7, pink) auf tram_rails
+   const trams=DATA.tram_rails||[];
+   for(let i=0;i<7 && trams.length;i++){
+     const seg=trams[Math.floor(Math.random()*trams.length)];
+     if(!seg||seg.length<2) continue;
+     const train=makeVZug(0xff5fa2, 0.7);
+     const t={mesh:train, seg, pos:Math.random(), dir:1, speed:14, y:4};
+     if(placeTrain(t)) { scene.add(train); __vTrains.push(t); }
+   }
+   if(!__vLoop) __vLoop=setInterval(updateVerkehr, 60);
+ }
+ function makeVZug(color, size){
+   const g=new THREE.Group();
+   const body=new THREE.Mesh(new THREE.BoxGeometry(14*size,4*size,3*size),
+     new THREE.MeshBasicMaterial({color, fog:false}));
+   body.position.y=2*size; g.add(body);
+   const win=new THREE.Mesh(new THREE.BoxGeometry(13*size,1.2*size,3.2*size),
+     new THREE.MeshBasicMaterial({color:0xffffff, fog:false}));
+   win.position.y=2.8*size; g.add(win);
+   return g;
+ }
+ function placeOnSeg(t){
+   const seg=t.seg, n=seg.length;
+   const i0=Math.floor(t.pos*(n-1)), i1=Math.min(i0+1,n-1);
+   const x=seg[i0][0], z=seg[i0][1];
+   if(!__ptInPoly(x,z)) return false;
+   t.mesh.position.set(x, terrainY(x,z)+3, z);
+   return true;
+ }
+ function placeTrain(t){
+   const seg=t.seg, n=seg.length;
+   const fp=t.pos*(n-1), i0=Math.floor(fp), i1=Math.min(i0+1,n-1);
+   const x=seg[i0][0]+(seg[i1][0]-seg[i0][0])*(fp-i0);
+   const z=seg[i0][1]+(seg[i1][1]-seg[i0][1])*(fp-i0);
+   if(!__ptInPoly(x,z)) return false; // STRIKT: nur im RK-Gebiet
+   t.mesh.position.set(x, terrainY(x,z)+t.y, z);
+   return true;
+ }
+ function updateVerkehr(){
+   __vCars.forEach(t=>{
+     let d=0; for(let i=0;i<t.seg.length-1;i++) d+=Math.hypot(t.seg[i+1][0]-t.seg[i][0],t.seg[i+1][1]-t.seg[i][1]);
+     t.pos+=0.06*t.speed/Math.max(d,1)*t.dir;
+     if(t.pos>=1){t.pos=1;t.dir=-1;} if(t.pos<=0){t.pos=0;t.dir=1;}
+     const n=t.seg.length, i0=Math.floor(t.pos*(n-1)), i1=Math.min(i0+1,n-1);
+     const x=t.seg[i0][0], z=t.seg[i0][1];
+     if(!__ptInPoly(x,z)){ t.mesh.visible=false; return; }
+     t.mesh.visible=true;
+     t.mesh.position.set(x, terrainY(x,z)+3, z);
+   });
+   __vTrains.forEach(t=>{
+     let d=0; for(let i=0;i<t.seg.length-1;i++) d+=Math.hypot(t.seg[i+1][0]-t.seg[i][0],t.seg[i+1][1]-t.seg[i][1]);
+     t.pos+=0.06*t.speed/Math.max(d,1)*t.dir;
+     if(t.pos>=1){t.pos=1;t.dir=-1;} if(t.pos<=0){t.pos=0;t.dir=1;}
+     const n=t.seg.length, fp=t.pos*(n-1), i0=Math.floor(fp), i1=Math.min(i0+1,n-1);
+     const x=t.seg[i0][0]+(t.seg[i1][0]-t.seg[i0][0])*(fp-i0);
+     const z=t.seg[i0][1]+(t.seg[i1][1]-t.seg[i0][1])*(fp-i0);
+     if(!__ptInPoly(x,z)){ t.mesh.visible=false; return; }
+     t.mesh.visible=true;
+     t.mesh.position.set(x, terrainY(x,z)+t.y, z);
+   });
+ }
+ function refreshLiveTrains(){ initVerkehr(); }
+ // ===== ENDE VERKEHR v1.16 =====
 
  
  // Leben-System v1.15: KOMPLETT ENTFERNT
@@ -2401,7 +2487,7 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{
 setTimeout(function(){ try{ __createBadgesDeferred(); }catch(e){ console.warn('Badge-Init:', e); } }, 3000);
 })();
 </script>
-<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v1.15</div>
+<div id="ver" style="position:fixed;bottom:4px;left:8px;font:10px monospace;color:#2dd4ee;opacity:0.6;z-index:9999;pointer-events:none;">v1.16</div>
 <!-- Hbf-Hologramm Modal -->
 <div id="hbf-modal" style="display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,0.8);">
   <div style="position:absolute;top:2%;left:2%;right:2%;bottom:2%;background:#000;border:1px solid #46f6ff;">
